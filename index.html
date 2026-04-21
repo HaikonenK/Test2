@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resan mot Materias Hjärta</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=MedievalSharp&display=swap');
+
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: 'MedievalSharp', cursive;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 700px;
+            background: #2a2a2a;
+            border: 3px solid #4a3c28;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            text-align: center;
+            margin: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: #3a3a3a;
+            border-radius: 5px;
+            border-bottom: 2px solid #d4af37;
+        }
+
+        .lives { color: #ff4d4d; font-size: 1.4rem; }
+        .step-count { color: #d4af37; font-size: 1.1rem; }
+
+        img {
+            width: 100%;
+            max-height: 350px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #4a3c28;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        h1, h2 { font-family: 'Cinzel', serif; color: #d4af37; margin-top: 0; text-shadow: 2px 2px 4px #000; }
+
+        .story-text { font-size: 1.2rem; line-height: 1.5; margin-bottom: 25px; text-align: left; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 5px; }
+
+        .options-container { display: grid; gap: 12px; margin-top: 20px; }
+
+        button {
+            background: linear-gradient(145deg, #4a3c28, #362c1e);
+            color: #f0e68c;
+            border: 1px solid #d4af37;
+            padding: 15px;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 6px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+
+        button:hover { background: #634e35; transform: translateY(-2px); box-shadow: 4px 4px 10px rgba(0,0,0,0.5); border-color: #fff; }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 2px solid #d4af37;
+            background: #1a1a1a;
+            color: white;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .hidden { display: none; }
+        .danger-text { color: #ff6666; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="start-screen">
+        <h1>Resan mot Materias Hjärta</h1>
+        <img src="https://i.imgur.com/7KiRQAx.jpeg" alt="Start Image">
+        <div class="story-text">
+            Mörkret har lagt sig över riket Materia. Den Stora Smedjan har slocknat och världen håller på att lösas upp. 
+            Du är den utvalda lärlingen som måste resa genom de fyra rikena för att återuppväcka smältugnarna. 
+            Du har tre magiska sköldar (liv). Om de krossas blir du kvar i glömskan för evigt.
+        </div>
+        <button onclick="startGame()">Starta Äventyret</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <div class="status-bar">
+            <span class="step-count" id="step-display">Delmål 1 / 15</span>
+            <span class="lives" id="life-count">🛡️🛡️🛡️</span>
+        </div>
+        
+        <h2 id="step-title"></h2>
+        <img id="main-image" src="" alt="Story Image">
+        <div id="story-display" class="story-text"></div>
+        
+        <div id="question-area">
+            <p id="question-text" style="font-weight: bold; font-size: 1.3rem; margin-bottom: 20px; color: #d4af37;"></p>
+            <div id="input-area"></div>
+            <div id="options" class="options-container"></div>
+        </div>
+    </div>
+
+    <div id="feedback-screen" class="hidden">
+        <h2 class="danger-text">FARA!</h2>
+        <img id="feedback-image" src="" alt="Danger Image">
+        <div id="feedback-text" class="story-text"></div>
+        <button onclick="retryQuestion()">Försök igen</button>
+    </div>
+
+    <div id="end-screen" class="hidden">
+        <h2 id="end-title"></h2>
+        <img id="end-image" src="" alt="End Image">
+        <div id="end-text" class="story-text"></div>
+        <button id="end-button" onclick="goToStart()"></button>
+    </div>
+</div>
+
+<script>
+    let lives = 3;
+    let currentStepIndex = 0;
+    let gameQuestions = [];
+
+    // --- MILESTONES ---
+    const milestones = [
+        { title: "Den viskande porten", story: "Du når gränsen till Materia. Porten kräver att du vet vad världen faktiskt är byggd av.", fara: "Porten slår igen och en tryckvåg stjäl ett liv!", img1: "https://i.imgur.com/2CUCX01.jpeg", img2: "https://i.imgur.com/ghn2lOV.jpeg" },
+        { title: "De giftiga ångornas dal", story: "Vägen går genom en dal fylld av färgglad dimma. Alla ämnen här är inte användbara.", fara: "Din skyddsmask spricker och du andas in giftgas!", img1: "https://i.imgur.com/lCVmlH6.jpeg", img2: "https://i.imgur.com/ADCwtXp.jpeg" },
+        { title: "De tre urkrafternas korsning", story: "Vägen delar sig i tre. För att välja rätt stig måste du förstå materiens ursprung.", fara: "Du faller ner i en bottenlös ravin!", img1: "https://i.imgur.com/OoJYOnj.jpeg", img2: "https://i.imgur.com/UxvJhJ2.jpeg" },
+        { title: "Ur-skogens prövning", story: "Du kliver in i den levande skogen. Här bor material som inte kräver människans hand.", fara: "Skogens rötter vaknar och drar ner dig!", img1: "https://i.imgur.com/NQrc0EZ.jpeg", img2: "https://i.imgur.com/eL64PRJ.jpeg" },
+        { title: "Den mörka gruvan", story: "Du klättrar ner i underjorden där skatterna sitter fast i stenen.", fara: "Ett gruvras utlöses och stenblock faller mot dig!", img1: "https://i.imgur.com/sglxMiJ.jpeg", img2: "https://i.imgur.com/J5y4oMS.jpeg" },
+        { title: "Alkemistens laboratorium", story: "Du når en borg av glas. Här har människor skapat material som naturen aldrig tänkt ut.", fara: "En misslyckad brygd exploderar i ett moln av syra!", img1: "https://i.imgur.com/Nj137O2.jpeg", img2: "https://i.imgur.com/BNaYn0s.jpeg" },
+        { title: "Stålbron över elden", story: "En bro av metall leder över en flod av lava. Bron kräver en specifik legering.", fara: "Bron blir mjuk och börjar smälta under dina fötter!", img1: "https://i.imgur.com/9ZbDSLq.jpeg", img2: "https://i.imgur.com/9GmvwWb.jpeg" },
+        { title: "Keramernas sköra palats", story: "Du går in i ett palats av porslin och glas. Ett felsteg kan krossa allt.", fara: "Palatset spricker och vassa glasskärvor regnar ner!", img1: "https://i.imgur.com/9FRNrKK.jpeg", img2: "https://i.imgur.com/Ggn4bpV.jpeg" },
+        { title: "Hybridmonstrets lya", story: "En varelse vaktar nästa passage. Den är gjord av olika delar, precis som vissa material.", fara: "Hybridmonstret anfaller med alla sina huvuden!", img1: "https://i.imgur.com/HpVMFAj.png", img2: "https://i.imgur.com/WODobiG.jpeg" },
+        { title: "Handelsmannens dilemma", story: "En girig handelsman stoppar dig. Han undrar varför han har så många olika typer av bestick.", fara: "Handelsmannen förtrollar dig till en guldstaty!", img1: "https://i.imgur.com/jngOH13.jpeg", img2: "https://i.imgur.com/BfaU80O.jpeg" },
+        { title: "Återfödelsens virvel", story: "Du når en magisk portal som kan göra gammalt till nytt. Varför behövs den?", fara: "Du sugs in i en tidscykel och åldras 100 år!", img1: "https://i.imgur.com/PAJhcyZ.jpeg", img2: "https://i.imgur.com/6EOOE9W.jpeg" },
+        { title: "Sorteringens labyrint", story: "För att komma vidare måste du sortera föremål. Men vissa är svårare än andra.", fara: "Labyrintens väggar börjar krympa och trycka ihop dig!", img1: "https://i.imgur.com/JKRknhx.jpeg", img2: "https://i.imgur.com/ghn2lOV.jpeg" },
+        { title: "De elastiska träsken", story: "Marken här är mjuk och fjädrande. Du måste förstå materialets kraft.", fara: "Du sjunker ner i en kletig sörja av gummi!", img1: "https://i.imgur.com/E01ddkF.jpeg", img2: "https://i.imgur.com/xr8YUGi.jpeg" },
+        { title: "Formbytarens kammare", story: "En magiker visar dig ett material som kan bli vad som helst när det värms upp.", fara: "Du blir instängd i en plastbubbla som hårdnar!", img1: "https://i.imgur.com/br3Awnb.jpeg", img2: "https://i.imgur.com/NRbperp.jpeg" },
+        { title: "Den Stora Smedjan", story: "Du är framme! Bevisa din kunskap om metallernas kung för att tända elden.", fara: "Elden slocknar och mörkret tar över världen!", img1: "https://i.imgur.com/R8o9gAO.png", img2: "https://i.imgur.com/qQYUBXm.png" }
+    ];
+
+    // --- FRÅGEBANK ---
+    const questionsPoolMC = [
+        { q: "Vad är den tekniska definitionen av ett 'material'?", a: "Fasta ämnen som man kan tillverka saker av.", w: ["Gaser man kan andas.", "Vätskor som flyter.", "Endast saker från djur."] },
+        { q: "Vilka ämnen räknas INTE som material i detta sammanhang?", a: "Flytande ämnen och gaser.", w: ["Metaller.", "Plast.", "Trä och sten."] },
+        { q: "Vilka tre grupper delas material in i?", a: "Naturliga, utvunna och uppfunna.", w: ["Mjuka, hårda, kalla.", "Gamla, nya, dyra.", "Luft, eld, vatten."] },
+        { q: "Vad kännetecknar ett 'naturligt material'?", a: "Det finns i ren form i naturen och kan användas direkt.", w: ["Det skapas i fabrik.", "Det är alltid grönt.", "Det är en blandning av stål."] },
+        { q: "Vilket av följande är ett utvunnet material?", a: "Järn.", w: ["Trä.", "Plast.", "Ylle."] },
+        { q: "Hur definieras ett 'uppfunnet material'?", a: "Blandningar eller helt nya material skapade av människan.", w: ["Saker man hittar färdiga i marken.", "Endast material från träd.", "Gaser från rymden."] },
+        { q: "Vad är 'stål' gjort av?", a: "En legering av järn och kol.", w: ["Rent guld.", "Plast och lera.", "Blandning av koppar och tenn."] },
+        { q: "Vad menas med begreppet 'keramer'?", a: "Inte metall och kommer inte från djur/växter.", w: ["En sorts mjuk plast.", "Bara genomskinliga saker.", "Endast träslag."] },
+        { q: "Vad är utmärkande för 'kompositer'?", a: "Består av två eller flera delar/komponenter.", w: ["Består alltid bara av gas.", "Är 100% naturliga.", "Kan aldrig formas."] },
+        { q: "Varför tillverkas salladsbestick av så många olika material?", a: "Människor har olika smak och företag har olika kunskap.", w: ["Det är lag på det.", "Det finns bara ett sätt.", "Andra material är förbjudna."] },
+        { q: "Varför är det viktigt att återvinna sällsynta material?", a: "Minska miljöproblem och tillfredsställa behov.", w: ["De blir magiska då.", "De försvinner annars ur universum.", "De blir billigare än trä."] },
+        { q: "Vad beror det på om ett material är svårt att återvinna?", a: "Till stor del på varifrån materialet kommer.", w: ["Vilken färg det har.", "Hur mycket det väger.", "Hur dyrt det var att köpa."] },
+        { q: "Dessa material finns i ren form i naturen:", a: "Naturliga material.", w: ["Uppfunna material.", "Utvunna material.", "Kompositer."] },
+        { q: "Utvunna material finns i naturen, men...", a: "Inte i ren form.", w: ["Endast i luften.", "Bara i havet.", "I flytande form."] }
+    ];
+
+    const questionsPoolGator = [
+        { q: "_______ är ett samlande namn på flera ämnen som är elastiska, alltså tänjbara.", a: "Gummi" },
+        { q: "_______ kallas de material som inte är metall och som inte kommer från djur eller växter.", a: "Keramer" },
+        { q: "_______ kallas material som består av två eller flera delar (eller komponenter).", a: "Kompositer" },
+        { q: "_______ är fasta ämnen som man kan tillverka saker av.", a: "Material" },
+        { q: "_______ är ett tillverkat material som någon gång varit mjukt och formbart.", a: "Plast" },
+        { q: "_______ är en legering av järn och kol.", a: "Stål" }
+    ];
+
+    // --- LOGIK ---
+    function shuffle(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    function startGame() {
+        // Slumpa fram 15 frågor: 4 gåtor + 11 flerval (totalt 15)
+        let gator = shuffle([...questionsPoolGator]).slice(0, 4);
+        let mc = shuffle([...questionsPoolMC]).slice(0, 11);
+        gameQuestions = shuffle([...gator, ...mc]);
+        
+        lives = 3;
+        currentStepIndex = 0;
+        
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('feedback-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        renderStep();
+    }
+
+    function renderStep() {
+        updateLives();
+        const step = milestones[currentStepIndex];
+        const quest = gameQuestions[currentStepIndex];
+        
+        document.getElementById('step-display').innerText = `Delmål ${currentStepIndex + 1} / 15`;
+        document.getElementById('step-title').innerText = step.title;
+        document.getElementById('main-image').src = step.img1;
+        document.getElementById('story-display').innerText = step.story;
+        document.getElementById('question-text').innerText = quest.q;
+        
+        const optionsDiv = document.getElementById('options');
+        const inputArea = document.getElementById('input-area');
+        optionsDiv.innerHTML = '';
+        inputArea.innerHTML = '';
+
+        if (quest.w) { // Flervalsfråga
+            // Slumpa svarsordningen
+            let allOpts = shuffle([{t: quest.a, c: true}, ...quest.w.map(opt => ({t: opt, c: false}))]);
+            allOpts.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.innerText = opt.t;
+                btn.onclick = () => checkAnswer(opt.c);
+                optionsDiv.appendChild(btn);
+            });
+        } else { // Gåta (Fyll i)
+            const input = document.createElement('input');
+            input.type = "text";
+            input.id = "user-input";
+            input.placeholder = "Skriv svaret här...";
+            input.onkeypress = (e) => { if(e.key === 'Enter') validateInput(); };
+            inputArea.appendChild(input);
+            
+            const btn = document.createElement('button');
+            btn.innerText = "Besvara Gåtan";
+            btn.style.width = "100%";
+            btn.onclick = validateInput;
+            optionsDiv.appendChild(btn);
+        }
+    }
+
+    function validateInput() {
+        const quest = gameQuestions[currentStepIndex];
+        const val = document.getElementById('user-input').value.trim().toLowerCase();
+        checkAnswer(val === quest.a.toLowerCase());
+    }
+
+    function checkAnswer(isCorrect) {
+        if (isCorrect) {
+            currentStepIndex++;
+            if (currentStepIndex >= 15) {
+                showEnd(true);
+            } else {
+                renderStep();
+            }
+        } else {
+            lives--;
+            updateLives();
+            if (lives <= 0) {
+                showEnd(false);
+            } else {
+                showDanger();
+            }
+        }
+    }
+
+    function showDanger() {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('feedback-screen').classList.remove('hidden');
+        document.getElementById('feedback-image').src = milestones[currentStepIndex].img2;
+        document.getElementById('feedback-text').innerText = milestones[currentStepIndex].fara;
+    }
+
+    function retryQuestion() {
+        document.getElementById('feedback-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        renderStep();
+    }
+
+    function showEnd(victory) {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('feedback-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.remove('hidden');
+        
+        if (victory) {
+            document.getElementById('end-title').innerText = "VINST!";
+            document.getElementById('end-image').src = "https://i.imgur.com/Zri6px0.png";
+            document.getElementById('end-text').innerText = "Du har klarat det! Du räddade den stora smedjan, landet Materia och världen kan nu frodas.";
+            document.getElementById('end-button').innerText = "Vill du testa igen?";
+        } else {
+            document.getElementById('end-title').innerText = "DU MISSLYCKADES";
+            document.getElementById('end-image').src = "https://i.imgur.com/Sycqxwx.png";
+            document.getElementById('end-text').innerText = "Du klarade det inte! Du räddade inte smedjan, landet Materia eller världen. Allt dör nu på grund av dig.";
+            document.getElementById('end-button').innerText = "Börja om";
+        }
+    }
+
+    // NY FUNKTION för att lösa buggen
+    function goToStart() {
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+        // Nollställ även statusen så det ser snyggt ut nästa gång man startar
+        lives = 3;
+        currentStepIndex = 0;
+    }
+
+    function updateLives() {
+        let shields = "";
+        for(let i=0; i<lives; i++) shields += "🛡️";
+        document.getElementById('life-count').innerText = shields || "💔";
+    }
+</script>
+
+</body>
+</html>
