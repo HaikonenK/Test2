@@ -188,6 +188,7 @@
     let retryMode = "question";
     let bridgeGameCompleted = false;
     let bridgePhaserGame = null;
+    let bridgePending = false;
 
     const milestones = [
         { title: "Den viskande porten", story: "Du når gränsen till Materia. Porten kräver att du vet vad världen faktiskt är byggd av.", fara: "Porten slår igen och en tryckvåg stjäl ett liv!", img1: "m1_1.png", img2: "m1_2.png" },
@@ -249,12 +250,14 @@
         let gator = shuffle([...questionsPoolGator]).slice(0, 4);
         let mc = shuffle([...questionsPoolMC]).slice(0, 11);
         gameQuestions = shuffle([...gator, ...mc]);
+
         lives = 3;
         currentStepIndex = 0;
         retryMode = "question";
         bridgeGameCompleted = false;
-        destroyBridgeGame();
+        bridgePending = false;
 
+        destroyBridgeGame();
         hideAllScreens();
         document.getElementById('game-screen').classList.remove('hidden');
         renderStep();
@@ -310,6 +313,7 @@
     function checkAnswer(isCorrect) {
         if (isCorrect) {
             if (currentStepIndex === 6 && !bridgeGameCompleted) {
+                bridgePending = true;
                 showBridgeGame();
                 return;
             }
@@ -332,12 +336,18 @@
     }
 
     function showBridgeGame() {
+        console.log("showBridgeGame körs");
         retryMode = "bridgeGame";
         hideAllScreens();
         document.getElementById('mini-game-screen').classList.remove('hidden');
         document.getElementById('mini-step-display').innerText = "Bonusprövning – Vulkanbron";
         updateLives();
-        initBridgeGame();
+
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                initBridgeGame();
+            }, 50);
+        });
     }
 
     function showDanger(isBridgeFail = false) {
@@ -388,16 +398,17 @@
         destroyBridgeGame();
         hideAllScreens();
         document.getElementById('start-screen').classList.remove('hidden');
+
         lives = 3;
         currentStepIndex = 0;
         retryMode = "question";
         bridgeGameCompleted = false;
+        bridgePending = false;
     }
 
     function updateLives() {
         let shields = "";
         for (let i = 0; i < lives; i++) shields += "🛡️";
-
         const displayValue = shields || "💔";
         document.getElementById('life-count').innerText = displayValue;
         document.getElementById('mini-life-count').innerText = displayValue;
@@ -406,6 +417,7 @@
     function bridgeMiniGameWin() {
         destroyBridgeGame();
         bridgeGameCompleted = true;
+        bridgePending = false;
         currentStepIndex++;
         hideAllScreens();
         document.getElementById('game-screen').classList.remove('hidden');
@@ -434,7 +446,11 @@
     }
 
     function initBridgeGame() {
+        console.log("initBridgeGame körs");
         destroyBridgeGame();
+
+        const holder = document.getElementById('phaser-game');
+        holder.innerHTML = "";
 
         let bgPlayer;
         let bgCursors;
@@ -455,30 +471,11 @@
         let bgSpikeHitboxes = [];
         let bgSpikeGraphics = [];
 
-        const config = {
-            type: Phaser.AUTO,
-            width: 900,
-            height: 500,
-            parent: 'phaser-game',
-            physics: {
-                default: 'arcade',
-                arcade: {
-                    gravity: { y: 1100 },
-                    debug: false
-                }
-            },
-            scene: {
-                preload: preload,
-                create: create,
-                update: update
-            }
-        };
-
-        function preload() {
+        function bridgePreload() {
             this.load.image('bridgeBg', 'volcano.png');
         }
 
-        function create() {
+        function bridgeCreate() {
             bgGameOver = false;
             bgFacing = 1;
             bgWalkTime = 0;
@@ -522,7 +519,7 @@
             });
         }
 
-        function update(_, delta) {
+        function bridgeUpdate(_, delta) {
             if (bgGameOver) return;
 
             bgPlayer.body.setVelocityX(0);
@@ -830,7 +827,24 @@
             });
         }
 
-        bridgePhaserGame = new Phaser.Game(config);
+        bridgePhaserGame = new Phaser.Game({
+            type: Phaser.AUTO,
+            width: 900,
+            height: 500,
+            parent: 'phaser-game',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 1100 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: bridgePreload,
+                create: bridgeCreate,
+                update: bridgeUpdate
+            }
+        });
     }
 </script>
 
