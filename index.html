@@ -20,7 +20,7 @@
 
         #game-container {
             width: 100%;
-            max-width: 700px;
+            max-width: 1000px;
             background: #2a2a2a;
             border: 3px solid #4a3c28;
             border-radius: 10px;
@@ -53,16 +53,21 @@
             border: 2px solid #4a3c28;
         }
 
-        h1, h2 { font-family: 'Cinzel', serif; color: #d4af37; margin-top: 0; text-shadow: 2px 2px 4px #000; }
+        h1, h2 {
+            font-family: 'Cinzel', serif;
+            color: #d4af37;
+            margin-top: 0;
+            text-shadow: 2px 2px 4px #000;
+        }
 
-        .story-text { 
-            font-size: 1.2rem; 
-            line-height: 1.5; 
-            margin-bottom: 25px; 
-            text-align: left; 
-            background: rgba(0,0,0,0.2); 
-            padding: 20px; 
-            border-radius: 5px; 
+        .story-text {
+            font-size: 1.2rem;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            text-align: left;
+            background: rgba(0,0,0,0.2);
+            padding: 20px;
+            border-radius: 5px;
             border-left: 4px solid #4a3c28;
         }
 
@@ -97,6 +102,21 @@
 
         .hidden { display: none; }
         .danger-text { color: #ff6666; font-weight: bold; }
+
+        #phaser-game {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        #phaser-game canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 2px solid #4a3c28;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -106,8 +126,8 @@
         <h1>Resan mot Materias Hjärta</h1>
         <img src="start.png" alt="Startbild">
         <div class="story-text">
-            Mörkret har lagt sig över riket Materia. Den Stora Smedjan har slocknat och världen håller på att lösas upp. 
-            Du är den utvalda lärlingen som måste resa genom de fyra rikena för att återuppväcka smältugnarna. 
+            Mörkret har lagt sig över riket Materia. Den Stora Smedjan har slocknat och världen håller på att lösas upp.
+            Du är den utvalda lärlingen som måste resa genom de fyra rikena för att återuppväcka smältugnarna.
             Du har tre magiska sköldar. Om de krossas blir du kvar i glömskan för evigt.
         </div>
         <button onclick="startGame()">Starta Äventyret</button>
@@ -118,15 +138,30 @@
             <span class="step-count" id="step-display">Delmål 1 / 15</span>
             <span class="lives" id="life-count">🛡️🛡️🛡️</span>
         </div>
-        
+
         <h2 id="step-title"></h2>
         <img id="main-image" src="" alt="Storybild">
         <div id="story-display" class="story-text"></div>
-        
+
         <div id="question-area">
             <div id="input-area"></div>
             <div id="options" class="options-container"></div>
         </div>
+    </div>
+
+    <div id="mini-game-screen" class="hidden">
+        <div class="status-bar">
+            <span class="step-count" id="mini-step-display">Bonusprövning</span>
+            <span class="lives" id="mini-life-count">🛡️🛡️🛡️</span>
+        </div>
+
+        <h2>Vulkanbron</h2>
+        <div class="story-text">
+            Du har svarat rätt – men bron tänker inte släppa förbi dig gratis.
+            Hoppa över blocken, undvik fällorna och ta dig till porten på andra sidan.
+        </div>
+
+        <div id="phaser-game"></div>
     </div>
 
     <div id="feedback-screen" class="hidden">
@@ -144,10 +179,15 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+
 <script>
     let lives = 3;
     let currentStepIndex = 0;
     let gameQuestions = [];
+    let retryMode = "question";
+    let bridgeGameCompleted = false;
+    let bridgePhaserGame = null;
 
     const milestones = [
         { title: "Den viskande porten", story: "Du når gränsen till Materia. Porten kräver att du vet vad världen faktiskt är byggd av.", fara: "Porten slår igen och en tryckvåg stjäl ett liv!", img1: "m1_1.png", img2: "m1_2.png" },
@@ -197,31 +237,41 @@
         return array.sort(() => Math.random() - 0.5);
     }
 
+    function hideAllScreens() {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('mini-game-screen').classList.add('hidden');
+        document.getElementById('feedback-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.add('hidden');
+    }
+
     function startGame() {
         let gator = shuffle([...questionsPoolGator]).slice(0, 4);
         let mc = shuffle([...questionsPoolMC]).slice(0, 11);
         gameQuestions = shuffle([...gator, ...mc]);
         lives = 3;
         currentStepIndex = 0;
-        document.getElementById('start-screen').classList.add('hidden');
-        document.getElementById('end-screen').classList.add('hidden');
-        document.getElementById('feedback-screen').classList.add('hidden');
+        retryMode = "question";
+        bridgeGameCompleted = false;
+        destroyBridgeGame();
+
+        hideAllScreens();
         document.getElementById('game-screen').classList.remove('hidden');
         renderStep();
     }
 
     function renderStep() {
         updateLives();
+        retryMode = "question";
+
         const step = milestones[currentStepIndex];
         const quest = gameQuestions[currentStepIndex];
-        
+
         document.getElementById('step-display').innerText = `Delmål ${currentStepIndex + 1} / 15`;
         document.getElementById('step-title').innerText = step.title;
         document.getElementById('main-image').src = step.img1;
-        
-        // HÄR SLÅS TEXTERNA IHOP:
         document.getElementById('story-display').innerText = step.story + " " + quest.q;
-        
+
         const optionsDiv = document.getElementById('options');
         const inputArea = document.getElementById('input-area');
         optionsDiv.innerHTML = '';
@@ -240,9 +290,9 @@
             input.type = "text";
             input.id = "user-input";
             input.placeholder = "Skriv svaret här...";
-            input.onkeypress = (e) => { if(e.key === 'Enter') validateInput(); };
+            input.onkeypress = (e) => { if (e.key === 'Enter') validateInput(); };
             inputArea.appendChild(input);
-            
+
             const btn = document.createElement('button');
             btn.innerText = "Besvara Gåtan";
             btn.style.width = "100%";
@@ -259,6 +309,11 @@
 
     function checkAnswer(isCorrect) {
         if (isCorrect) {
+            if (currentStepIndex === 6 && !bridgeGameCompleted) {
+                showBridgeGame();
+                return;
+            }
+
             currentStepIndex++;
             if (currentStepIndex >= 15) {
                 showEnd(true);
@@ -271,29 +326,51 @@
             if (lives <= 0) {
                 showEnd(false);
             } else {
-                showDanger();
+                showDanger(false);
             }
         }
     }
 
-    function showDanger() {
-        document.getElementById('game-screen').classList.add('hidden');
+    function showBridgeGame() {
+        retryMode = "bridgeGame";
+        hideAllScreens();
+        document.getElementById('mini-game-screen').classList.remove('hidden');
+        document.getElementById('mini-step-display').innerText = "Bonusprövning – Vulkanbron";
+        updateLives();
+        initBridgeGame();
+    }
+
+    function showDanger(isBridgeFail = false) {
+        hideAllScreens();
         document.getElementById('feedback-screen').classList.remove('hidden');
-        document.getElementById('feedback-image').src = milestones[currentStepIndex].img2;
-        document.getElementById('feedback-text').innerText = milestones[currentStepIndex].fara;
+
+        if (isBridgeFail) {
+            retryMode = "bridgeGame";
+            document.getElementById('feedback-image').src = milestones[6].img2;
+            document.getElementById('feedback-text').innerText = milestones[6].fara;
+        } else {
+            retryMode = "question";
+            document.getElementById('feedback-image').src = milestones[currentStepIndex].img2;
+            document.getElementById('feedback-text').innerText = milestones[currentStepIndex].fara;
+        }
     }
 
     function retryQuestion() {
-        document.getElementById('feedback-screen').classList.add('hidden');
+        if (retryMode === "bridgeGame") {
+            showBridgeGame();
+            return;
+        }
+
+        hideAllScreens();
         document.getElementById('game-screen').classList.remove('hidden');
         renderStep();
     }
 
     function showEnd(victory) {
-        document.getElementById('game-screen').classList.add('hidden');
-        document.getElementById('feedback-screen').classList.add('hidden');
+        destroyBridgeGame();
+        hideAllScreens();
         document.getElementById('end-screen').classList.remove('hidden');
-        
+
         if (victory) {
             document.getElementById('end-title').innerText = "VINST!";
             document.getElementById('end-image').src = "gameover1.png";
@@ -308,16 +385,452 @@
     }
 
     function goToStart() {
-        document.getElementById('end-screen').classList.add('hidden');
+        destroyBridgeGame();
+        hideAllScreens();
         document.getElementById('start-screen').classList.remove('hidden');
         lives = 3;
         currentStepIndex = 0;
+        retryMode = "question";
+        bridgeGameCompleted = false;
     }
 
     function updateLives() {
         let shields = "";
-        for(let i=0; i<lives; i++) shields += "🛡️";
-        document.getElementById('life-count').innerText = shields || "💔";
+        for (let i = 0; i < lives; i++) shields += "🛡️";
+
+        const displayValue = shields || "💔";
+        document.getElementById('life-count').innerText = displayValue;
+        document.getElementById('mini-life-count').innerText = displayValue;
+    }
+
+    function bridgeMiniGameWin() {
+        destroyBridgeGame();
+        bridgeGameCompleted = true;
+        currentStepIndex++;
+        hideAllScreens();
+        document.getElementById('game-screen').classList.remove('hidden');
+        renderStep();
+    }
+
+    function bridgeMiniGameFail() {
+        destroyBridgeGame();
+        lives--;
+        updateLives();
+
+        if (lives <= 0) {
+            showEnd(false);
+        } else {
+            showDanger(true);
+        }
+    }
+
+    function destroyBridgeGame() {
+        if (bridgePhaserGame) {
+            bridgePhaserGame.destroy(true);
+            bridgePhaserGame = null;
+        }
+        const holder = document.getElementById('phaser-game');
+        if (holder) holder.innerHTML = "";
+    }
+
+    function initBridgeGame() {
+        destroyBridgeGame();
+
+        let bgPlayer;
+        let bgCursors;
+        let bgPlatforms;
+        let bgLavaZone;
+        let bgGoalZone;
+        let bgGameOver = false;
+        let bgFacing = 1;
+        let bgWalkTime = 0;
+
+        let bgFallingBlocks = [];
+        let bgFakeBlock = null;
+        let bgFakeBlockTriggered = false;
+
+        let bgSpikeTrapBlock = null;
+        let bgSpikeTrapTriggered = false;
+        let bgSpikeTrapZone = null;
+        let bgSpikeHitboxes = [];
+        let bgSpikeGraphics = [];
+
+        const config = {
+            type: Phaser.AUTO,
+            width: 900,
+            height: 500,
+            parent: 'phaser-game',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 1100 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        function preload() {
+            this.load.image('bridgeBg', 'volcano.png');
+        }
+
+        function create() {
+            bgGameOver = false;
+            bgFacing = 1;
+            bgWalkTime = 0;
+            bgFakeBlockTriggered = false;
+            bgSpikeTrapTriggered = false;
+            bgSpikeHitboxes = [];
+            bgSpikeGraphics = [];
+            bgFallingBlocks = [];
+
+            this.add.image(450, 250, 'bridgeBg')
+                .setDisplaySize(900, 500)
+                .setDepth(-10);
+
+            createPlatformLevel(this);
+
+            bgPlayer = createPlayer(this, 90, 355);
+
+            this.physics.add.collider(bgPlayer, bgPlatforms);
+            this.physics.add.overlap(bgPlayer, bgLavaZone, () => lose(this, '💀 Du föll i lavan!'));
+            this.physics.add.overlap(bgPlayer, bgGoalZone, () => win(this));
+
+            if (bgSpikeTrapZone) {
+                this.physics.add.overlap(bgPlayer, bgSpikeTrapZone, () => triggerSpikeTrap(this));
+            }
+
+            bgCursors = this.input.keyboard.createCursorKeys();
+
+            this.add.text(20, 16, 'Ta dig över vulkanbron', {
+                fontSize: '24px',
+                color: '#ffffff',
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 4
+            });
+
+            this.add.text(20, 46, '← → spring, ↑ hoppa', {
+                fontSize: '16px',
+                color: '#d7dde5',
+                stroke: '#000000',
+                strokeThickness: 3
+            });
+        }
+
+        function update(_, delta) {
+            if (bgGameOver) return;
+
+            bgPlayer.body.setVelocityX(0);
+
+            if (bgCursors.left.isDown) {
+                bgPlayer.body.setVelocityX(-280);
+                bgFacing = -1;
+            } else if (bgCursors.right.isDown) {
+                bgPlayer.body.setVelocityX(280);
+                bgFacing = 1;
+            }
+
+            if (bgCursors.up.isDown && bgPlayer.body.blocked.down) {
+                bgPlayer.body.setVelocityY(-540);
+            }
+
+            bgWalkTime += delta;
+            updatePlayerLook(bgPlayer, bgWalkTime, bgFacing);
+
+            if (bgPlayer.y > 560 && !bgGameOver) {
+                lose(this, '💀 Du föll i lavan!');
+            }
+
+            if (
+                bgFakeBlock &&
+                !bgFakeBlockTriggered &&
+                bgPlayer.body.blocked.down &&
+                bgPlayer.x > bgFakeBlock.x - bgFakeBlock.width / 2 &&
+                bgPlayer.x < bgFakeBlock.x + bgFakeBlock.width / 2 &&
+                Math.abs(bgPlayer.y - (bgFakeBlock.y - 36)) < 30
+            ) {
+                triggerFakeBlock(this);
+            }
+
+            bgFallingBlocks.forEach(block => {
+                if (!block || block.falling || bgGameOver) return;
+
+                const onBlock =
+                    bgPlayer.body.blocked.down &&
+                    bgPlayer.x > block.x - block.width / 2 &&
+                    bgPlayer.x < block.x + block.width / 2 &&
+                    Math.abs(bgPlayer.y - (block.y - 36)) < 30;
+
+                if (onBlock) {
+                    block.timer += delta;
+                    if (block.timer > 3000) {
+                        triggerFallingBlock(this, block);
+                    }
+                } else {
+                    block.timer = 0;
+                }
+            });
+
+            if (bgSpikeTrapTriggered && !bgGameOver) {
+                for (const spike of bgSpikeHitboxes) {
+                    if (!spike) continue;
+
+                    const playerBounds = bgPlayer.getBounds();
+                    const spikeBounds = spike.getBounds();
+
+                    if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, spikeBounds)) {
+                        lose(this, '💀 Du sprang rakt på spikarna!');
+                        break;
+                    }
+                }
+            }
+        }
+
+        function createPlatformLevel(scene) {
+            bgPlatforms = scene.physics.add.staticGroup();
+            bgLavaZone = scene.physics.add.staticGroup();
+            bgGoalZone = scene.physics.add.staticGroup();
+
+            addFallingPlatform(scene, 110, 390, 170, 28);
+            addFallingPlatform(scene, 280, 350, 90, 24);
+            bgFakeBlock = addFallingPlatform(scene, 420, 290, 90, 24);
+            addFallingPlatform(scene, 565, 340, 45, 24);
+            bgSpikeTrapBlock = addFallingPlatform(scene, 700, 255, 90, 24);
+            addFallingPlatform(scene, 835, 385, 120, 28);
+
+            const trapZoneX = bgSpikeTrapBlock.x + bgSpikeTrapBlock.width / 4;
+            bgSpikeTrapZone = scene.add.rectangle(
+                trapZoneX,
+                bgSpikeTrapBlock.y - 22,
+                bgSpikeTrapBlock.width / 2,
+                30,
+                0xff0000,
+                0
+            );
+            scene.physics.add.existing(bgSpikeTrapZone, true);
+
+            addLavaHitbox(scene, 450, 472, 900, 56);
+
+            const doorBack = scene.add.rectangle(845, 335, 46, 92, 0x203020);
+            const door = scene.add.rectangle(845, 335, 34, 80, 0x64ff8a);
+            const glow = scene.add.rectangle(845, 335, 56, 102, 0x64ff8a, 0.18);
+
+            scene.physics.add.existing(door, true);
+            bgGoalZone.add(door);
+
+            doorBack.setDepth(1);
+            glow.setDepth(0);
+            door.setDepth(2);
+        }
+
+        function addStonePlatform(scene, x, y, width, height) {
+            const base = scene.add.rectangle(x, y, width, height, 0x6b6f7a);
+            const top = scene.add.rectangle(x, y - height / 2 + 4, width - 6, 8, 0x9097a5);
+            const shadow = scene.add.rectangle(x, y + height / 2 - 4, width - 8, 6, 0x4d525c);
+
+            scene.physics.add.existing(base, true);
+            bgPlatforms.add(base);
+
+            top.setDepth(2);
+            shadow.setDepth(1);
+
+            const brickCount = Math.max(2, Math.floor(width / 26));
+            for (let i = 0; i < brickCount; i++) {
+                const px = x - width / 2 + 13 + i * (width / brickCount);
+                scene.add.rectangle(px, y, 2, height - 6, 0x585d68, 0.35);
+            }
+
+            return { x, y, width, height, base, top, shadow };
+        }
+
+        function addFallingPlatform(scene, x, y, width, height) {
+            const platform = addStonePlatform(scene, x, y, width, height);
+            platform.timer = 0;
+            platform.falling = false;
+            bgFallingBlocks.push(platform);
+            return platform;
+        }
+
+        function triggerFallingBlock(scene, block) {
+            if (!block || block.falling) return;
+            block.falling = true;
+
+            if (block.base && block.base.active) {
+                bgPlatforms.remove(block.base, true, true);
+            }
+
+            scene.tweens.add({
+                targets: [block.base, block.top, block.shadow],
+                y: '+=150',
+                angle: Phaser.Math.Between(-20, 20),
+                alpha: 0,
+                duration: 500,
+                ease: 'Quad.easeIn',
+                onComplete: () => {
+                    if (block.base) block.base.destroy();
+                    if (block.top) block.top.destroy();
+                    if (block.shadow) block.shadow.destroy();
+                }
+            });
+        }
+
+        function addLavaHitbox(scene, x, y, width, height) {
+            const zone = scene.add.rectangle(x, y, width, height, 0xff0000, 0);
+            scene.physics.add.existing(zone, true);
+            bgLavaZone.add(zone);
+        }
+
+        function createPlayer(scene, x, y) {
+            const container = scene.add.container(x, y);
+
+            const body = scene.add.rectangle(0, 8, 18, 26, 0x6f4a2d);
+            const head = scene.add.circle(0, -14, 9, 0xffd7b5);
+            const eye = scene.add.circle(3, -15, 1.5, 0x111111);
+            const leg1 = scene.add.rectangle(-5, 28, 5, 16, 0x4a2e1d);
+            const leg2 = scene.add.rectangle(5, 28, 5, 16, 0x4a2e1d);
+            const arm1 = scene.add.rectangle(-12, 8, 4, 14, 0xffd7b5);
+            const arm2 = scene.add.rectangle(12, 8, 4, 14, 0xffd7b5);
+
+            container.add([leg1, leg2, arm1, arm2, body, head, eye]);
+
+            container.leg1 = leg1;
+            container.leg2 = leg2;
+            container.arm1 = arm1;
+            container.arm2 = arm2;
+
+            scene.physics.add.existing(container);
+            container.body.setSize(20, 48);
+            container.body.setOffset(-10, -20);
+            container.body.setCollideWorldBounds(true);
+
+            return container;
+        }
+
+        function updatePlayerLook(playerObj, walkTime, facingDir) {
+            playerObj.setScale(facingDir, 1);
+
+            const speed = Math.abs(playerObj.body.velocity.x);
+            const onGround = playerObj.body.blocked.down;
+
+            if (!onGround) {
+                playerObj.leg1.rotation = 0.45;
+                playerObj.leg2.rotation = -0.45;
+                playerObj.arm1.rotation = -0.5;
+                playerObj.arm2.rotation = 0.5;
+                return;
+            }
+
+            if (speed > 10) {
+                const swing = Math.sin(walkTime * 0.02) * 0.7;
+                playerObj.leg1.rotation = swing;
+                playerObj.leg2.rotation = -swing;
+                playerObj.arm1.rotation = -swing;
+                playerObj.arm2.rotation = swing;
+            } else {
+                playerObj.leg1.rotation = 0;
+                playerObj.leg2.rotation = 0;
+                playerObj.arm1.rotation = 0;
+                playerObj.arm2.rotation = 0;
+            }
+        }
+
+        function triggerFakeBlock(scene) {
+            if (bgFakeBlockTriggered || bgGameOver) return;
+            bgFakeBlockTriggered = true;
+            triggerFallingBlock(scene, bgFakeBlock);
+        }
+
+        function triggerSpikeTrap(scene) {
+            if (bgSpikeTrapTriggered || bgGameOver) return;
+            bgSpikeTrapTriggered = true;
+
+            const block = bgSpikeTrapBlock;
+            const spikePositions = [block.x + 8, block.x + 24, block.x + 40];
+
+            spikePositions.forEach((xPos) => {
+                const tri = scene.add.triangle(
+                    xPos,
+                    block.y + 8,
+                    0, 18,
+                    9, 0,
+                    18, 18,
+                    0xd9d9d9
+                );
+
+                const hitbox = scene.add.rectangle(xPos, block.y + 10, 14, 22, 0xff0000, 0);
+
+                scene.physics.add.existing(hitbox, true);
+
+                bgSpikeGraphics.push(tri);
+                bgSpikeHitboxes.push(hitbox);
+            });
+
+            scene.tweens.add({
+                targets: [...bgSpikeGraphics, ...bgSpikeHitboxes],
+                y: '-=28',
+                duration: 90,
+                ease: 'Power2'
+            });
+        }
+
+        function lose(scene, text = '💀 Du dog!') {
+            if (bgGameOver) return;
+            bgGameOver = true;
+
+            bgPlayer.body.setVelocity(0, 0);
+
+            bgPlayer.list.forEach(part => {
+                if (part.setFillStyle) {
+                    part.setFillStyle(0xff5555);
+                }
+            });
+
+            scene.tweens.add({
+                targets: bgPlayer,
+                x: bgPlayer.x + 5,
+                yoyo: true,
+                repeat: 5,
+                duration: 50
+            });
+
+            scene.add.text(240, 200, text, {
+                fontSize: '30px',
+                color: '#ff6b5f',
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 4
+            });
+
+            scene.time.delayedCall(900, () => {
+                bridgeMiniGameFail();
+            });
+        }
+
+        function win(scene) {
+            if (bgGameOver) return;
+            bgGameOver = true;
+
+            bgPlayer.body.setVelocity(0, 0);
+
+            scene.add.text(255, 200, '🎉 Du klarade vulkanbron!', {
+                fontSize: '30px',
+                color: '#63ff9b',
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 4
+            });
+
+            scene.time.delayedCall(900, () => {
+                bridgeMiniGameWin();
+            });
+        }
+
+        bridgePhaserGame = new Phaser.Game(config);
     }
 </script>
 
