@@ -491,7 +491,7 @@
 
             createPlatformLevel(this);
 
-            bgPlayer = createPlayer(this, 90, 355);
+            bgPlayer = createPlayer(this, 110, 330);
 
             this.physics.add.collider(bgPlayer, bgPlatforms);
             this.physics.add.overlap(bgPlayer, bgLavaZone, () => lose(this, '💀 Du föll i lavan!'));
