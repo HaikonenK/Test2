@@ -188,7 +188,6 @@
     let retryMode = "question";
     let bridgeGameCompleted = false;
     let bridgePhaserGame = null;
-    let bridgePending = false;
 
     const milestones = [
         { title: "Den viskande porten", story: "Du når gränsen till Materia. Porten kräver att du vet vad världen faktiskt är byggd av.", fara: "Porten slår igen och en tryckvåg stjäl ett liv!", img1: "m1_1.png", img2: "m1_2.png" },
@@ -255,7 +254,6 @@
         currentStepIndex = 0;
         retryMode = "question";
         bridgeGameCompleted = false;
-        bridgePending = false;
 
         destroyBridgeGame();
         hideAllScreens();
@@ -313,7 +311,6 @@
     function checkAnswer(isCorrect) {
         if (isCorrect) {
             if (currentStepIndex === 6 && !bridgeGameCompleted) {
-                bridgePending = true;
                 showBridgeGame();
                 return;
             }
@@ -336,7 +333,6 @@
     }
 
     function showBridgeGame() {
-        console.log("showBridgeGame körs");
         retryMode = "bridgeGame";
         hideAllScreens();
         document.getElementById('mini-game-screen').classList.remove('hidden');
@@ -403,7 +399,6 @@
         currentStepIndex = 0;
         retryMode = "question";
         bridgeGameCompleted = false;
-        bridgePending = false;
     }
 
     function updateLives() {
@@ -417,7 +412,6 @@
     function bridgeMiniGameWin() {
         destroyBridgeGame();
         bridgeGameCompleted = true;
-        bridgePending = false;
         currentStepIndex++;
         hideAllScreens();
         document.getElementById('game-screen').classList.remove('hidden');
@@ -446,13 +440,13 @@
     }
 
     function initBridgeGame() {
-        console.log("initBridgeGame körs");
         destroyBridgeGame();
 
         const holder = document.getElementById('phaser-game');
         holder.innerHTML = "";
 
-        let bgPlayer;
+        let bgPlayerBody;
+        let bgPlayerVisual;
         let bgCursors;
         let bgPlatforms;
         let bgLavaZone;
@@ -491,14 +485,16 @@
 
             createPlatformLevel(this);
 
-            bgPlayer = createPlayer(this, 110, 330);
+            const playerParts = createPlayer(this, 110, 335);
+            bgPlayerBody = playerParts.body;
+            bgPlayerVisual = playerParts.visual;
 
-            this.physics.add.collider(bgPlayer, bgPlatforms);
-            this.physics.add.overlap(bgPlayer, bgLavaZone, () => lose(this, '💀 Du föll i lavan!'));
-            this.physics.add.overlap(bgPlayer, bgGoalZone, () => win(this));
+            this.physics.add.collider(bgPlayerBody, bgPlatforms);
+            this.physics.add.overlap(bgPlayerBody, bgLavaZone, () => lose(this, '💀 Du föll i lavan!'));
+            this.physics.add.overlap(bgPlayerBody, bgGoalZone, () => win(this));
 
             if (bgSpikeTrapZone) {
-                this.physics.add.overlap(bgPlayer, bgSpikeTrapZone, () => triggerSpikeTrap(this));
+                this.physics.add.overlap(bgPlayerBody, bgSpikeTrapZone, () => triggerSpikeTrap(this));
             }
 
             bgCursors = this.input.keyboard.createCursorKeys();
@@ -522,34 +518,37 @@
         function bridgeUpdate(_, delta) {
             if (bgGameOver) return;
 
-            bgPlayer.body.setVelocityX(0);
+            bgPlayerBody.body.setVelocityX(0);
 
             if (bgCursors.left.isDown) {
-                bgPlayer.body.setVelocityX(-280);
+                bgPlayerBody.body.setVelocityX(-280);
                 bgFacing = -1;
             } else if (bgCursors.right.isDown) {
-                bgPlayer.body.setVelocityX(280);
+                bgPlayerBody.body.setVelocityX(280);
                 bgFacing = 1;
             }
 
-            if (bgCursors.up.isDown && bgPlayer.body.blocked.down) {
-                bgPlayer.body.setVelocityY(-540);
+            if (bgCursors.up.isDown && bgPlayerBody.body.blocked.down) {
+                bgPlayerBody.body.setVelocityY(-540);
             }
 
             bgWalkTime += delta;
-            updatePlayerLook(bgPlayer, bgWalkTime, bgFacing);
 
-            if (bgPlayer.y > 560 && !bgGameOver) {
+            bgPlayerVisual.x = bgPlayerBody.x;
+            bgPlayerVisual.y = bgPlayerBody.y;
+            updatePlayerLook(bgPlayerVisual, bgPlayerBody.body, bgWalkTime, bgFacing);
+
+            if (bgPlayerBody.y > 560 && !bgGameOver) {
                 lose(this, '💀 Du föll i lavan!');
             }
 
             if (
                 bgFakeBlock &&
                 !bgFakeBlockTriggered &&
-                bgPlayer.body.blocked.down &&
-                bgPlayer.x > bgFakeBlock.x - bgFakeBlock.width / 2 &&
-                bgPlayer.x < bgFakeBlock.x + bgFakeBlock.width / 2 &&
-                Math.abs(bgPlayer.y - (bgFakeBlock.y - 36)) < 30
+                bgPlayerBody.body.blocked.down &&
+                bgPlayerBody.x > bgFakeBlock.x - bgFakeBlock.width / 2 &&
+                bgPlayerBody.x < bgFakeBlock.x + bgFakeBlock.width / 2 &&
+                Math.abs(bgPlayerBody.y - (bgFakeBlock.y - 35)) < 26
             ) {
                 triggerFakeBlock(this);
             }
@@ -558,10 +557,10 @@
                 if (!block || block.falling || bgGameOver) return;
 
                 const onBlock =
-                    bgPlayer.body.blocked.down &&
-                    bgPlayer.x > block.x - block.width / 2 &&
-                    bgPlayer.x < block.x + block.width / 2 &&
-                    Math.abs(bgPlayer.y - (block.y - 36)) < 30;
+                    bgPlayerBody.body.blocked.down &&
+                    bgPlayerBody.x > block.x - block.width / 2 &&
+                    bgPlayerBody.x < block.x + block.width / 2 &&
+                    Math.abs(bgPlayerBody.y - (block.y - 35)) < 26;
 
                 if (onBlock) {
                     block.timer += delta;
@@ -577,7 +576,7 @@
                 for (const spike of bgSpikeHitboxes) {
                     if (!spike) continue;
 
-                    const playerBounds = bgPlayer.getBounds();
+                    const playerBounds = bgPlayerBody.getBounds();
                     const spikeBounds = spike.getBounds();
 
                     if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, spikeBounds)) {
@@ -683,7 +682,7 @@
         }
 
         function createPlayer(scene, x, y) {
-            const container = scene.add.container(x, y);
+            const visual = scene.add.container(x, y);
 
             const body = scene.add.rectangle(0, 8, 18, 26, 0x6f4a2d);
             const head = scene.add.circle(0, -14, 9, 0xffd7b5);
@@ -693,46 +692,48 @@
             const arm1 = scene.add.rectangle(-12, 8, 4, 14, 0xffd7b5);
             const arm2 = scene.add.rectangle(12, 8, 4, 14, 0xffd7b5);
 
-            container.add([leg1, leg2, arm1, arm2, body, head, eye]);
+            visual.add([leg1, leg2, arm1, arm2, body, head, eye]);
 
-            container.leg1 = leg1;
-            container.leg2 = leg2;
-            container.arm1 = arm1;
-            container.arm2 = arm2;
+            visual.leg1 = leg1;
+            visual.leg2 = leg2;
+            visual.arm1 = arm1;
+            visual.arm2 = arm2;
 
-            scene.physics.add.existing(container);
-            container.body.setSize(20, 48);
-            container.body.setOffset(-10, -20);
-            container.body.setCollideWorldBounds(true);
+            const physicsBody = scene.add.rectangle(x, y, 18, 44, 0xffffff, 0);
+            scene.physics.add.existing(physicsBody);
+            physicsBody.body.setCollideWorldBounds(true);
+            physicsBody.body.setBounce(0);
+            physicsBody.body.setDragX(800);
+            physicsBody.body.setMaxVelocity(300, 900);
 
-            return container;
+            return { body: physicsBody, visual };
         }
 
-        function updatePlayerLook(playerObj, walkTime, facingDir) {
-            playerObj.setScale(facingDir, 1);
+        function updatePlayerLook(playerVisual, playerBody, walkTime, facingDir) {
+            playerVisual.setScale(facingDir, 1);
 
-            const speed = Math.abs(playerObj.body.velocity.x);
-            const onGround = playerObj.body.blocked.down;
+            const speed = Math.abs(playerBody.velocity.x);
+            const onGround = playerBody.blocked.down;
 
             if (!onGround) {
-                playerObj.leg1.rotation = 0.45;
-                playerObj.leg2.rotation = -0.45;
-                playerObj.arm1.rotation = -0.5;
-                playerObj.arm2.rotation = 0.5;
+                playerVisual.leg1.rotation = 0.45;
+                playerVisual.leg2.rotation = -0.45;
+                playerVisual.arm1.rotation = -0.5;
+                playerVisual.arm2.rotation = 0.5;
                 return;
             }
 
             if (speed > 10) {
                 const swing = Math.sin(walkTime * 0.02) * 0.7;
-                playerObj.leg1.rotation = swing;
-                playerObj.leg2.rotation = -swing;
-                playerObj.arm1.rotation = -swing;
-                playerObj.arm2.rotation = swing;
+                playerVisual.leg1.rotation = swing;
+                playerVisual.leg2.rotation = -swing;
+                playerVisual.arm1.rotation = -swing;
+                playerVisual.arm2.rotation = swing;
             } else {
-                playerObj.leg1.rotation = 0;
-                playerObj.leg2.rotation = 0;
-                playerObj.arm1.rotation = 0;
-                playerObj.arm2.rotation = 0;
+                playerVisual.leg1.rotation = 0;
+                playerVisual.leg2.rotation = 0;
+                playerVisual.arm1.rotation = 0;
+                playerVisual.arm2.rotation = 0;
             }
         }
 
@@ -779,17 +780,17 @@
             if (bgGameOver) return;
             bgGameOver = true;
 
-            bgPlayer.body.setVelocity(0, 0);
+            bgPlayerBody.body.setVelocity(0, 0);
 
-            bgPlayer.list.forEach(part => {
+            bgPlayerVisual.list.forEach(part => {
                 if (part.setFillStyle) {
                     part.setFillStyle(0xff5555);
                 }
             });
 
             scene.tweens.add({
-                targets: bgPlayer,
-                x: bgPlayer.x + 5,
+                targets: bgPlayerVisual,
+                x: bgPlayerVisual.x + 5,
                 yoyo: true,
                 repeat: 5,
                 duration: 50
@@ -812,7 +813,7 @@
             if (bgGameOver) return;
             bgGameOver = true;
 
-            bgPlayer.body.setVelocity(0, 0);
+            bgPlayerBody.body.setVelocity(0, 0);
 
             scene.add.text(255, 200, '🎉 Du klarade vulkanbron!', {
                 fontSize: '30px',
