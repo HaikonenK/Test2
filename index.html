@@ -535,7 +535,7 @@
             bgWalkTime += delta;
 
             bgPlayerVisual.x = bgPlayerBody.x;
-            bgPlayerVisual.y = bgPlayerBody.y;
+            bgPlayerVisual.y = bgPlayerBody.y - 4;
             updatePlayerLook(bgPlayerVisual, bgPlayerBody.body, bgWalkTime, bgFacing);
 
             if (bgPlayerBody.y > 560 && !bgGameOver) {
@@ -564,7 +564,7 @@
 
                 if (onBlock) {
                     block.timer += delta;
-                    if (block.timer > 3000) {
+                    if (block.timer > 1500) {
                         triggerFallingBlock(this, block);
                     }
                 } else {
@@ -592,7 +592,7 @@
             bgLavaZone = scene.physics.add.staticGroup();
             bgGoalZone = scene.physics.add.staticGroup();
 
-            addFallingPlatform(scene, 110, 390, 170, 28);
+            addstonePlatform(scene, 110, 390, 170, 28);
             addFallingPlatform(scene, 280, 350, 90, 24);
             bgFakeBlock = addFallingPlatform(scene, 420, 290, 90, 24);
             addFallingPlatform(scene, 565, 340, 45, 24);
