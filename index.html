@@ -332,521 +332,210 @@
         }
     }
 
-    function showBridgeGame() {
-        retryMode = "bridgeGame";
-        hideAllScreens();
-        document.getElementById('mini-game-screen').classList.remove('hidden');
-        document.getElementById('mini-step-display').innerText = "Bonusprövning – Vulkanbron";
-        updateLives();
-
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                initBridgeGame();
-            }, 50);
-        });
-    }
-
-    function showDanger(isBridgeFail = false) {
-        hideAllScreens();
-        document.getElementById('feedback-screen').classList.remove('hidden');
-
-        if (isBridgeFail) {
-            retryMode = "bridgeGame";
-            document.getElementById('feedback-image').src = milestones[6].img2;
-            document.getElementById('feedback-text').innerText = milestones[6].fara;
-        } else {
-            retryMode = "question";
-            document.getElementById('feedback-image').src = milestones[currentStepIndex].img2;
-            document.getElementById('feedback-text').innerText = milestones[currentStepIndex].fara;
-        }
-    }
-
-    function retryQuestion() {
-        if (retryMode === "bridgeGame") {
-            showBridgeGame();
-            return;
-        }
-
-        hideAllScreens();
-        document.getElementById('game-screen').classList.remove('hidden');
-        renderStep();
-    }
-
-    function showEnd(victory) {
-        destroyBridgeGame();
-        hideAllScreens();
-        document.getElementById('end-screen').classList.remove('hidden');
-
-        if (victory) {
-            document.getElementById('end-title').innerText = "VINST!";
-            document.getElementById('end-image').src = "gameover1.png";
-            document.getElementById('end-text').innerText = "Du har klarat det! Du räddade den stora smedjan, landet Materia och världen kan nu frodas.";
-            document.getElementById('end-button').innerText = "Vill du testa igen?";
-        } else {
-            document.getElementById('end-title').innerText = "DU MISSLYCKADES";
-            document.getElementById('end-image').src = "gameover2.png";
-            document.getElementById('end-text').innerText = "Du klarade det inte! Du räddade inte smedjan, landet Materia eller världen. Allt dör nu på grund av dig.";
-            document.getElementById('end-button').innerText = "Börja om";
-        }
-    }
-
-    function goToStart() {
-        destroyBridgeGame();
-        hideAllScreens();
-        document.getElementById('start-screen').classList.remove('hidden');
-
-        lives = 3;
-        currentStepIndex = 0;
-        retryMode = "question";
-        bridgeGameCompleted = false;
-    }
-
-    function updateLives() {
-        let shields = "";
-        for (let i = 0; i < lives; i++) shields += "🛡️";
-        const displayValue = shields || "💔";
-        document.getElementById('life-count').innerText = displayValue;
-        document.getElementById('mini-life-count').innerText = displayValue;
-    }
-
-    function bridgeMiniGameWin() {
-        destroyBridgeGame();
-        bridgeGameCompleted = true;
-        currentStepIndex++;
-        hideAllScreens();
-        document.getElementById('game-screen').classList.remove('hidden');
-        renderStep();
-    }
-
-    function bridgeMiniGameFail() {
-        destroyBridgeGame();
-        lives--;
-        updateLives();
-
-        if (lives <= 0) {
-            showEnd(false);
-        } else {
-            showDanger(true);
-        }
-    }
-
-    function destroyBridgeGame() {
-        if (bridgePhaserGame) {
-            bridgePhaserGame.destroy(true);
-            bridgePhaserGame = null;
-        }
-        const holder = document.getElementById('phaser-game');
-        if (holder) holder.innerHTML = "";
-    }
-
     function initBridgeGame() {
-        destroyBridgeGame();
+    destroyBridgeGame();
 
-        const holder = document.getElementById('phaser-game');
-        holder.innerHTML = "";
+    const holder = document.getElementById('phaser-game');
+    holder.innerHTML = "";
 
-        let bgPlayerBody;
-        let bgPlayerVisual;
-        let bgCursors;
-        let bgPlatforms;
-        let bgLavaZone;
-        let bgGoalZone;
-        let bgGameOver = false;
-        let bgFacing = 1;
-        let bgWalkTime = 0;
+    let bgPlayerBody;
+    let bgPlayerVisual;
+    let bgCursors;
+    let bgPlatforms;
+    let bgLavaZone;
+    let bgGoalZone;
+    let bgGameOver = false;
+    let bgFacing = 1;
+    let bgWalkTime = 0;
 
-        let bgFallingBlocks = [];
-        let bgFakeBlock = null;
-        let bgFakeBlockTriggered = false;
+    let bgFallingBlocks = [];
+    let bgFakeBlock = null;
+    let bgFakeBlockTriggered = false;
 
-        let bgSpikeTrapBlock = null;
-        let bgSpikeTrapTriggered = false;
-        let bgSpikeTrapZone = null;
-        let bgSpikeHitboxes = [];
-        let bgSpikeGraphics = [];
+    let bgSpikeTrapBlock = null;
+    let bgSpikeTrapTriggered = false;
+    let bgSpikeTrapZone = null;
+    let bgSpikeHitboxes = [];
+    let bgSpikeGraphics = [];
 
-        function bridgePreload() {
-            this.load.image('bridgeBg', 'volcano.png');
+    function bridgePreload() {
+        this.load.image('bridgeBg', 'volcano.png');
+    }
+
+    function bridgeCreate() {
+        this.add.image(450, 250, 'bridgeBg')
+            .setDisplaySize(900, 500)
+            .setDepth(-10);
+
+        createPlatformLevel(this);
+
+        const playerParts = createPlayer(this, 110, 335);
+        bgPlayerBody = playerParts.body;
+        bgPlayerVisual = playerParts.visual;
+
+        this.physics.add.collider(bgPlayerBody, bgPlatforms);
+        this.physics.add.overlap(bgPlayerBody, bgLavaZone, () => lose(this));
+        this.physics.add.overlap(bgPlayerBody, bgGoalZone, () => win(this));
+
+        if (bgSpikeTrapZone) {
+            this.physics.add.overlap(bgPlayerBody, bgSpikeTrapZone, () => triggerSpikeTrap(this));
         }
 
-        function bridgeCreate() {
-            bgGameOver = false;
+        bgCursors = this.input.keyboard.createCursorKeys();
+    }
+
+    function bridgeUpdate(_, delta) {
+        if (bgGameOver) return;
+
+        bgPlayerBody.body.setVelocityX(0);
+
+        if (bgCursors.left.isDown) {
+            bgPlayerBody.body.setVelocityX(-280);
+            bgFacing = -1;
+        } else if (bgCursors.right.isDown) {
+            bgPlayerBody.body.setVelocityX(280);
             bgFacing = 1;
-            bgWalkTime = 0;
-            bgFakeBlockTriggered = false;
-            bgSpikeTrapTriggered = false;
-            bgSpikeHitboxes = [];
-            bgSpikeGraphics = [];
-            bgFallingBlocks = [];
-
-            this.add.image(450, 250, 'bridgeBg')
-                .setDisplaySize(900, 500)
-                .setDepth(-10);
-
-            createPlatformLevel(this);
-
-            const playerParts = createPlayer(this, 110, 335);
-            bgPlayerBody = playerParts.body;
-            bgPlayerVisual = playerParts.visual;
-
-            this.physics.add.collider(bgPlayerBody, bgPlatforms);
-            this.physics.add.overlap(bgPlayerBody, bgLavaZone, () => lose(this, '💀 Du föll i lavan!'));
-            this.physics.add.overlap(bgPlayerBody, bgGoalZone, () => win(this));
-
-            if (bgSpikeTrapZone) {
-                this.physics.add.overlap(bgPlayerBody, bgSpikeTrapZone, () => triggerSpikeTrap(this));
-            }
-
-            bgCursors = this.input.keyboard.createCursorKeys();
-
-            this.add.text(20, 16, 'Ta dig över vulkanbron', {
-                fontSize: '24px',
-                color: '#ffffff',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4
-            });
-
-            this.add.text(20, 46, '← → spring, ↑ hoppa', {
-                fontSize: '16px',
-                color: '#d7dde5',
-                stroke: '#000000',
-                strokeThickness: 3
-            });
         }
 
-        function bridgeUpdate(_, delta) {
-            if (bgGameOver) return;
-
-            bgPlayerBody.body.setVelocityX(0);
-
-            if (bgCursors.left.isDown) {
-                bgPlayerBody.body.setVelocityX(-280);
-                bgFacing = -1;
-            } else if (bgCursors.right.isDown) {
-                bgPlayerBody.body.setVelocityX(280);
-                bgFacing = 1;
-            }
-
-            if (bgCursors.up.isDown && bgPlayerBody.body.blocked.down) {
-                bgPlayerBody.body.setVelocityY(-540);
-            }
-
-            bgWalkTime += delta;
-
-            bgPlayerVisual.x = bgPlayerBody.x;
-            bgPlayerVisual.y = bgPlayerBody.y - 4;
-            updatePlayerLook(bgPlayerVisual, bgPlayerBody.body, bgWalkTime, bgFacing);
-
-            if (bgPlayerBody.y > 560 && !bgGameOver) {
-                lose(this, '💀 Du föll i lavan!');
-            }
-
-            if (
-                bgFakeBlock &&
-                !bgFakeBlockTriggered &&
-                bgPlayerBody.body.blocked.down &&
-                bgPlayerBody.x > bgFakeBlock.x - bgFakeBlock.width / 2 &&
-                bgPlayerBody.x < bgFakeBlock.x + bgFakeBlock.width / 2 &&
-                Math.abs(bgPlayerBody.y - (bgFakeBlock.y - 35)) < 26
-            ) {
-                triggerFakeBlock(this);
-            }
-
-            bgFallingBlocks.forEach(block => {
-                if (!block || block.falling || bgGameOver) return;
-
-                const onBlock =
-                    bgPlayerBody.body.blocked.down &&
-                    bgPlayerBody.x > block.x - block.width / 2 &&
-                    bgPlayerBody.x < block.x + block.width / 2 &&
-                    Math.abs(bgPlayerBody.y - (block.y - 35)) < 26;
-
-                if (onBlock) {
-                    block.timer += delta;
-                    if (block.timer > 1500) {
-                        triggerFallingBlock(this, block);
-                    }
-                } else {
-                    block.timer = 0;
-                }
-            });
-
-            if (bgSpikeTrapTriggered && !bgGameOver) {
-                for (const spike of bgSpikeHitboxes) {
-                    if (!spike) continue;
-
-                    const playerBounds = bgPlayerBody.getBounds();
-                    const spikeBounds = spike.getBounds();
-
-                    if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, spikeBounds)) {
-                        lose(this, '💀 Du sprang rakt på spikarna!');
-                        break;
-                    }
-                }
-            }
+        if (bgCursors.up.isDown && bgPlayerBody.body.blocked.down) {
+            bgPlayerBody.body.setVelocityY(-540);
         }
 
-        function createPlatformLevel(scene) {
-            bgPlatforms = scene.physics.add.staticGroup();
-            bgLavaZone = scene.physics.add.staticGroup();
-            bgGoalZone = scene.physics.add.staticGroup();
+        bgWalkTime += delta;
 
-            addstonePlatform(scene, 110, 390, 170, 28);
-            addFallingPlatform(scene, 280, 350, 90, 24);
-            bgFakeBlock = addFallingPlatform(scene, 420, 290, 90, 24);
-            addFallingPlatform(scene, 565, 340, 45, 24);
-            bgSpikeTrapBlock = addFallingPlatform(scene, 700, 255, 90, 24);
-            addFallingPlatform(scene, 835, 385, 120, 28);
+        // 🔥 Här höjer vi gubben lite visuellt
+        bgPlayerVisual.x = bgPlayerBody.x;
+        bgPlayerVisual.y = bgPlayerBody.y - 5;
 
-            const trapZoneX = bgSpikeTrapBlock.x + bgSpikeTrapBlock.width / 4;
-            bgSpikeTrapZone = scene.add.rectangle(
-                trapZoneX,
-                bgSpikeTrapBlock.y - 22,
-                bgSpikeTrapBlock.width / 2,
-                30,
-                0xff0000,
-                0
-            );
-            scene.physics.add.existing(bgSpikeTrapZone, true);
+        updatePlayerLook(bgPlayerVisual, bgPlayerBody.body, bgWalkTime, bgFacing);
 
-            addLavaHitbox(scene, 450, 472, 900, 56);
-
-            const doorBack = scene.add.rectangle(845, 335, 46, 92, 0x203020);
-            const door = scene.add.rectangle(845, 335, 34, 80, 0x64ff8a);
-            const glow = scene.add.rectangle(845, 335, 56, 102, 0x64ff8a, 0.18);
-
-            scene.physics.add.existing(door, true);
-            bgGoalZone.add(door);
-
-            doorBack.setDepth(1);
-            glow.setDepth(0);
-            door.setDepth(2);
-        }
-
-        function addStonePlatform(scene, x, y, width, height) {
-            const base = scene.add.rectangle(x, y, width, height, 0x6b6f7a);
-            const top = scene.add.rectangle(x, y - height / 2 + 4, width - 6, 8, 0x9097a5);
-            const shadow = scene.add.rectangle(x, y + height / 2 - 4, width - 8, 6, 0x4d525c);
-
-            scene.physics.add.existing(base, true);
-            bgPlatforms.add(base);
-
-            top.setDepth(2);
-            shadow.setDepth(1);
-
-            const brickCount = Math.max(2, Math.floor(width / 26));
-            for (let i = 0; i < brickCount; i++) {
-                const px = x - width / 2 + 13 + i * (width / brickCount);
-                scene.add.rectangle(px, y, 2, height - 6, 0x585d68, 0.35);
-            }
-
-            return { x, y, width, height, base, top, shadow };
-        }
-
-        function addFallingPlatform(scene, x, y, width, height) {
-            const platform = addStonePlatform(scene, x, y, width, height);
-            platform.timer = 0;
-            platform.falling = false;
-            bgFallingBlocks.push(platform);
-            return platform;
-        }
-
-        function triggerFallingBlock(scene, block) {
+        // FALLLOGIK – 1.5 sekunder
+        bgFallingBlocks.forEach(block => {
             if (!block || block.falling) return;
-            block.falling = true;
 
-            if (block.base && block.base.active) {
-                bgPlatforms.remove(block.base, true, true);
-            }
+            const onBlock =
+                bgPlayerBody.body.blocked.down &&
+                bgPlayerBody.x > block.x - block.width / 2 &&
+                bgPlayerBody.x < block.x + block.width / 2;
 
-            scene.tweens.add({
-                targets: [block.base, block.top, block.shadow],
-                y: '+=150',
-                angle: Phaser.Math.Between(-20, 20),
-                alpha: 0,
-                duration: 500,
-                ease: 'Quad.easeIn',
-                onComplete: () => {
-                    if (block.base) block.base.destroy();
-                    if (block.top) block.top.destroy();
-                    if (block.shadow) block.shadow.destroy();
+            if (onBlock) {
+                block.timer += delta;
+                if (block.timer > 1500) {   // 🔥 1.5 sek
+                    triggerFallingBlock(this, block);
                 }
-            });
-        }
-
-        function addLavaHitbox(scene, x, y, width, height) {
-            const zone = scene.add.rectangle(x, y, width, height, 0xff0000, 0);
-            scene.physics.add.existing(zone, true);
-            bgLavaZone.add(zone);
-        }
-
-        function createPlayer(scene, x, y) {
-            const visual = scene.add.container(x, y);
-
-            const body = scene.add.rectangle(0, 8, 18, 26, 0x6f4a2d);
-            const head = scene.add.circle(0, -14, 9, 0xffd7b5);
-            const eye = scene.add.circle(3, -15, 1.5, 0x111111);
-            const leg1 = scene.add.rectangle(-5, 28, 5, 16, 0x4a2e1d);
-            const leg2 = scene.add.rectangle(5, 28, 5, 16, 0x4a2e1d);
-            const arm1 = scene.add.rectangle(-12, 8, 4, 14, 0xffd7b5);
-            const arm2 = scene.add.rectangle(12, 8, 4, 14, 0xffd7b5);
-
-            visual.add([leg1, leg2, arm1, arm2, body, head, eye]);
-
-            visual.leg1 = leg1;
-            visual.leg2 = leg2;
-            visual.arm1 = arm1;
-            visual.arm2 = arm2;
-
-            const physicsBody = scene.add.rectangle(x, y, 18, 44, 0xffffff, 0);
-            scene.physics.add.existing(physicsBody);
-            physicsBody.body.setCollideWorldBounds(true);
-            physicsBody.body.setBounce(0);
-            physicsBody.body.setDragX(800);
-            physicsBody.body.setMaxVelocity(300, 900);
-
-            return { body: physicsBody, visual };
-        }
-
-        function updatePlayerLook(playerVisual, playerBody, walkTime, facingDir) {
-            playerVisual.setScale(facingDir, 1);
-
-            const speed = Math.abs(playerBody.velocity.x);
-            const onGround = playerBody.blocked.down;
-
-            if (!onGround) {
-                playerVisual.leg1.rotation = 0.45;
-                playerVisual.leg2.rotation = -0.45;
-                playerVisual.arm1.rotation = -0.5;
-                playerVisual.arm2.rotation = 0.5;
-                return;
-            }
-
-            if (speed > 10) {
-                const swing = Math.sin(walkTime * 0.02) * 0.7;
-                playerVisual.leg1.rotation = swing;
-                playerVisual.leg2.rotation = -swing;
-                playerVisual.arm1.rotation = -swing;
-                playerVisual.arm2.rotation = swing;
             } else {
-                playerVisual.leg1.rotation = 0;
-                playerVisual.leg2.rotation = 0;
-                playerVisual.arm1.rotation = 0;
-                playerVisual.arm2.rotation = 0;
-            }
-        }
-
-        function triggerFakeBlock(scene) {
-            if (bgFakeBlockTriggered || bgGameOver) return;
-            bgFakeBlockTriggered = true;
-            triggerFallingBlock(scene, bgFakeBlock);
-        }
-
-        function triggerSpikeTrap(scene) {
-            if (bgSpikeTrapTriggered || bgGameOver) return;
-            bgSpikeTrapTriggered = true;
-
-            const block = bgSpikeTrapBlock;
-            const spikePositions = [block.x + 8, block.x + 24, block.x + 40];
-
-            spikePositions.forEach((xPos) => {
-                const tri = scene.add.triangle(
-                    xPos,
-                    block.y + 8,
-                    0, 18,
-                    9, 0,
-                    18, 18,
-                    0xd9d9d9
-                );
-
-                const hitbox = scene.add.rectangle(xPos, block.y + 10, 14, 22, 0xff0000, 0);
-
-                scene.physics.add.existing(hitbox, true);
-
-                bgSpikeGraphics.push(tri);
-                bgSpikeHitboxes.push(hitbox);
-            });
-
-            scene.tweens.add({
-                targets: [...bgSpikeGraphics, ...bgSpikeHitboxes],
-                y: '-=28',
-                duration: 90,
-                ease: 'Power2'
-            });
-        }
-
-        function lose(scene, text = '💀 Du dog!') {
-            if (bgGameOver) return;
-            bgGameOver = true;
-
-            bgPlayerBody.body.setVelocity(0, 0);
-
-            bgPlayerVisual.list.forEach(part => {
-                if (part.setFillStyle) {
-                    part.setFillStyle(0xff5555);
-                }
-            });
-
-            scene.tweens.add({
-                targets: bgPlayerVisual,
-                x: bgPlayerVisual.x + 5,
-                yoyo: true,
-                repeat: 5,
-                duration: 50
-            });
-
-            scene.add.text(240, 200, text, {
-                fontSize: '30px',
-                color: '#ff6b5f',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4
-            });
-
-            scene.time.delayedCall(900, () => {
-                bridgeMiniGameFail();
-            });
-        }
-
-        function win(scene) {
-            if (bgGameOver) return;
-            bgGameOver = true;
-
-            bgPlayerBody.body.setVelocity(0, 0);
-
-            scene.add.text(255, 200, '🎉 Du klarade vulkanbron!', {
-                fontSize: '30px',
-                color: '#63ff9b',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4
-            });
-
-            scene.time.delayedCall(900, () => {
-                bridgeMiniGameWin();
-            });
-        }
-
-        bridgePhaserGame = new Phaser.Game({
-            type: Phaser.AUTO,
-            width: 900,
-            height: 500,
-            parent: 'phaser-game',
-            physics: {
-                default: 'arcade',
-                arcade: {
-                    gravity: { y: 1100 },
-                    debug: false
-                }
-            },
-            scene: {
-                preload: bridgePreload,
-                create: bridgeCreate,
-                update: bridgeUpdate
+                block.timer = 0;
             }
         });
     }
+
+    function createPlatformLevel(scene) {
+        bgPlatforms = scene.physics.add.staticGroup();
+        bgLavaZone = scene.physics.add.staticGroup();
+        bgGoalZone = scene.physics.add.staticGroup();
+
+        // 🔥 STARTBLOCK = SAFE
+        addStonePlatform(scene, 110, 390, 170, 28);
+
+        addFallingPlatform(scene, 280, 350, 90, 24);
+        bgFakeBlock = addFallingPlatform(scene, 420, 290, 90, 24);
+        addFallingPlatform(scene, 565, 340, 45, 24);
+        bgSpikeTrapBlock = addFallingPlatform(scene, 700, 255, 90, 24);
+        addFallingPlatform(scene, 835, 385, 120, 28);
+
+        addLavaHitbox(scene, 450, 472, 900, 56);
+
+        const door = scene.add.rectangle(845, 335, 34, 80, 0x64ff8a);
+        scene.physics.add.existing(door, true);
+        bgGoalZone.add(door);
+    }
+
+    function addStonePlatform(scene, x, y, width, height) {
+        const base = scene.add.rectangle(x, y, width, height, 0x6b6f7a);
+        scene.physics.add.existing(base, true);
+        bgPlatforms.add(base);
+    }
+
+    function addFallingPlatform(scene, x, y, width, height) {
+        const base = scene.add.rectangle(x, y, width, height, 0x6b6f7a);
+        scene.physics.add.existing(base, true);
+        bgPlatforms.add(base);
+
+        const platform = { x, y, width, height, base, timer: 0, falling: false };
+        bgFallingBlocks.push(platform);
+        return platform;
+    }
+
+    function triggerFallingBlock(scene, block) {
+        if (!block || block.falling) return;
+        block.falling = true;
+
+        bgPlatforms.remove(block.base, true, true);
+
+        scene.tweens.add({
+            targets: block.base,
+            y: '+=150',
+            alpha: 0,
+            duration: 400
+        });
+    }
+
+    function addLavaHitbox(scene, x, y, width, height) {
+        const zone = scene.add.rectangle(x, y, width, height, 0xff0000, 0);
+        scene.physics.add.existing(zone, true);
+        bgLavaZone.add(zone);
+    }
+
+    function createPlayer(scene, x, y) {
+        const visual = scene.add.container(x, y);
+
+        const body = scene.add.rectangle(0, 8, 18, 26, 0x6f4a2d);
+        const head = scene.add.circle(0, -14, 9, 0xffd7b5);
+
+        visual.add([body, head]);
+
+        const physicsBody = scene.add.rectangle(x, y, 18, 44, 0xffffff, 0);
+        scene.physics.add.existing(physicsBody);
+        physicsBody.body.setCollideWorldBounds(true);
+
+        return { body: physicsBody, visual };
+    }
+
+    function updatePlayerLook(playerVisual, playerBody, walkTime, facingDir) {
+        playerVisual.setScale(facingDir, 1);
+    }
+
+    function lose(scene) {
+        if (bgGameOver) return;
+        bgGameOver = true;
+        scene.time.delayedCall(500, () => bridgeMiniGameFail());
+    }
+
+    function win(scene) {
+        if (bgGameOver) return;
+        bgGameOver = true;
+        scene.time.delayedCall(500, () => bridgeMiniGameWin());
+    }
+
+    bridgePhaserGame = new Phaser.Game({
+        type: Phaser.AUTO,
+        width: 900,
+        height: 500,
+        parent: 'phaser-game',
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 1100 },
+                debug: false
+            }
+        },
+        scene: {
+            preload: bridgePreload,
+            create: bridgeCreate,
+            update: bridgeUpdate
+        }
+    });
+}
 </script>
 
 </body>
