@@ -51,7 +51,6 @@
             border-radius: 8px;
             margin-bottom: 20px;
             border: 2px solid #4a3c28;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
         h1, h2 { font-family: 'Cinzel', serif; color: #d4af37; margin-top: 0; text-shadow: 2px 2px 4px #000; }
@@ -70,10 +69,9 @@
             cursor: pointer;
             transition: all 0.3s;
             border-radius: 6px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
         }
 
-        button:hover { background: #634e35; transform: translateY(-2px); box-shadow: 4px 4px 10px rgba(0,0,0,0.5); border-color: #fff; }
+        button:hover { background: #634e35; transform: translateY(-2px); }
 
         input[type="text"] {
             width: 80%;
@@ -97,11 +95,11 @@
 <div id="game-container">
     <div id="start-screen">
         <h1>Resan mot Materias Hjärta</h1>
-        <img src="https://i.imgur.com/7KiRQAx.jpeg" alt="Start Image">
+        <img src="start.png" alt="Startbild">
         <div class="story-text">
             Mörkret har lagt sig över riket Materia. Den Stora Smedjan har slocknat och världen håller på att lösas upp. 
             Du är den utvalda lärlingen som måste resa genom de fyra rikena för att återuppväcka smältugnarna. 
-            Du har tre magiska sköldar (liv). Om de krossas blir du kvar i glömskan för evigt.
+            Du har tre magiska sköldar. Om de krossas blir du kvar i glömskan för evigt.
         </div>
         <button onclick="startGame()">Starta Äventyret</button>
     </div>
@@ -113,7 +111,7 @@
         </div>
         
         <h2 id="step-title"></h2>
-        <img id="main-image" src="" alt="Story Image">
+        <img id="main-image" src="" alt="Storybild">
         <div id="story-display" class="story-text"></div>
         
         <div id="question-area">
@@ -125,14 +123,14 @@
 
     <div id="feedback-screen" class="hidden">
         <h2 class="danger-text">FARA!</h2>
-        <img id="feedback-image" src="" alt="Danger Image">
+        <img id="feedback-image" src="" alt="Fara">
         <div id="feedback-text" class="story-text"></div>
         <button onclick="retryQuestion()">Försök igen</button>
     </div>
 
     <div id="end-screen" class="hidden">
         <h2 id="end-title"></h2>
-        <img id="end-image" src="" alt="End Image">
+        <img id="end-image" src="" alt="Slutbild">
         <div id="end-text" class="story-text"></div>
         <button id="end-button" onclick="goToStart()"></button>
     </div>
@@ -143,26 +141,25 @@
     let currentStepIndex = 0;
     let gameQuestions = [];
 
-    // --- MILESTONES ---
+    // --- DATA ---
     const milestones = [
-        { title: "Den viskande porten", story: "Du når gränsen till Materia. Porten kräver att du vet vad världen faktiskt är byggd av.", fara: "Porten slår igen och en tryckvåg stjäl ett liv!", img1: "https://i.imgur.com/2CUCX01.jpeg", img2: "https://i.imgur.com/ghn2lOV.jpeg" },
-        { title: "De giftiga ångornas dal", story: "Vägen går genom en dal fylld av färgglad dimma. Alla ämnen här är inte användbara.", fara: "Din skyddsmask spricker och du andas in giftgas!", img1: "https://i.imgur.com/lCVmlH6.jpeg", img2: "https://i.imgur.com/ADCwtXp.jpeg" },
-        { title: "De tre urkrafternas korsning", story: "Vägen delar sig i tre. För att välja rätt stig måste du förstå materiens ursprung.", fara: "Du faller ner i en bottenlös ravin!", img1: "https://i.imgur.com/OoJYOnj.jpeg", img2: "https://i.imgur.com/UxvJhJ2.jpeg" },
-        { title: "Ur-skogens prövning", story: "Du kliver in i den levande skogen. Här bor material som inte kräver människans hand.", fara: "Skogens rötter vaknar och drar ner dig!", img1: "https://i.imgur.com/NQrc0EZ.jpeg", img2: "https://i.imgur.com/eL64PRJ.jpeg" },
-        { title: "Den mörka gruvan", story: "Du klättrar ner i underjorden där skatterna sitter fast i stenen.", fara: "Ett gruvras utlöses och stenblock faller mot dig!", img1: "https://i.imgur.com/sglxMiJ.jpeg", img2: "https://i.imgur.com/J5y4oMS.jpeg" },
-        { title: "Alkemistens laboratorium", story: "Du når en borg av glas. Här har människor skapat material som naturen aldrig tänkt ut.", fara: "En misslyckad brygd exploderar i ett moln av syra!", img1: "https://i.imgur.com/Nj137O2.jpeg", img2: "https://i.imgur.com/BNaYn0s.jpeg" },
-        { title: "Stålbron över elden", story: "En bro av metall leder över en flod av lava. Bron kräver en specifik legering.", fara: "Bron blir mjuk och börjar smälta under dina fötter!", img1: "https://i.imgur.com/9ZbDSLq.jpeg", img2: "https://i.imgur.com/9GmvwWb.jpeg" },
-        { title: "Keramernas sköra palats", story: "Du går in i ett palats av porslin och glas. Ett felsteg kan krossa allt.", fara: "Palatset spricker och vassa glasskärvor regnar ner!", img1: "https://i.imgur.com/9FRNrKK.jpeg", img2: "https://i.imgur.com/Ggn4bpV.jpeg" },
-        { title: "Hybridmonstrets lya", story: "En varelse vaktar nästa passage. Den är gjord av olika delar, precis som vissa material.", fara: "Hybridmonstret anfaller med alla sina huvuden!", img1: "https://i.imgur.com/HpVMFAj.png", img2: "https://i.imgur.com/WODobiG.jpeg" },
-        { title: "Handelsmannens dilemma", story: "En girig handelsman stoppar dig. Han undrar varför han har så många olika typer av bestick.", fara: "Handelsmannen förtrollar dig till en guldstaty!", img1: "https://i.imgur.com/jngOH13.jpeg", img2: "https://i.imgur.com/BfaU80O.jpeg" },
-        { title: "Återfödelsens virvel", story: "Du når en magisk portal som kan göra gammalt till nytt. Varför behövs den?", fara: "Du sugs in i en tidscykel och åldras 100 år!", img1: "https://i.imgur.com/PAJhcyZ.jpeg", img2: "https://i.imgur.com/6EOOE9W.jpeg" },
-        { title: "Sorteringens labyrint", story: "För att komma vidare måste du sortera föremål. Men vissa är svårare än andra.", fara: "Labyrintens väggar börjar krympa och trycka ihop dig!", img1: "https://i.imgur.com/JKRknhx.jpeg", img2: "https://i.imgur.com/ghn2lOV.jpeg" },
-        { title: "De elastiska träsken", story: "Marken här är mjuk och fjädrande. Du måste förstå materialets kraft.", fara: "Du sjunker ner i en kletig sörja av gummi!", img1: "https://i.imgur.com/E01ddkF.jpeg", img2: "https://i.imgur.com/xr8YUGi.jpeg" },
-        { title: "Formbytarens kammare", story: "En magiker visar dig ett material som kan bli vad som helst när det värms upp.", fara: "Du blir instängd i en plastbubbla som hårdnar!", img1: "https://i.imgur.com/br3Awnb.jpeg", img2: "https://i.imgur.com/NRbperp.jpeg" },
-        { title: "Den Stora Smedjan", story: "Du är framme! Bevisa din kunskap om metallernas kung för att tända elden.", fara: "Elden slocknar och mörkret tar över världen!", img1: "https://i.imgur.com/R8o9gAO.png", img2: "https://i.imgur.com/qQYUBXm.png" }
+        { title: "Den viskande porten", story: "Du når gränsen till Materia. Porten kräver att du vet vad världen faktiskt är byggd av.", fara: "Porten slår igen och en tryckvåg stjäl ett liv!", img1: "m1_1.png", img2: "m1_2.png" },
+        { title: "De giftiga ångornas dal", story: "Vägen går genom en dal fylld av färgglad dimma. Alla ämnen här är inte användbara.", fara: "Din skyddsmask spricker och du andas in giftgas!", img1: "m2_1.png", img2: "m2_2.png" },
+        { title: "De tre urkrafternas korsning", story: "Vägen delar sig i tre. För att välja rätt stig måste du förstå materiens ursprung.", fara: "Du faller ner i en bottenlös ravin!", img1: "m3_1.png", img2: "m3_2.png" },
+        { title: "Ur-skogens prövning", story: "Du kliver in i den levande skogen. Här bor material som inte kräver människans hand.", fara: "Skogens rötter vaknar och drar ner dig!", img1: "m4_1.png", img2: "m4_2.png" },
+        { title: "Den mörka gruvan", story: "Du klättrar ner i underjorden där skatterna sitter fast i stenen.", fara: "Ett gruvras utlöses och sten block faller mot dig!", img1: "m5_1.png", img2: "m5_2.png" },
+        { title: "Alkemistens laboratorium", story: "Du når en borg av glas. Här har människor skapat material som naturen aldrig tänkt ut.", fara: "En misslyckad brygd exploderar i ett moln av syra!", img1: "m6_1.png", img2: "m6_2.png" },
+        { title: "Stålbron över elden", story: "En bro av metall leder över en flod av lava. Bron kräver en specifik legering.", fara: "Bron blir mjuk och börjar smälta under dina fötter!", img1: "m7_1.png", img2: "m7_2.png" },
+        { title: "Keramernas sköra palats", story: "Du går in i ett palats av porslin och glas. Ett felsteg kan krossa allt.", fara: "Palatset spricker och vassa glasskärvor regnar ner!", img1: "m8_1.png", img2: "m8_2.png" },
+        { title: "Hybridmonstrets lya", story: "En varelse vaktar nästa passage. Den är gjord av olika delar, precis som vissa material.", fara: "Hybridmonstret anfaller med alla sina huvuden!", img1: "m9_1.png", img2: "m9_2.png" },
+        { title: "Handelsmannens dilemma", story: "En girig handelsman stoppar dig. Han undrar varför han har så många olika typer av bestick.", fara: "Handelsmannen förtrollar dig till en guldstaty!", img1: "m10_1.png", img2: "m10_2.png" },
+        { title: "Återfödelsens virvel", story: "Du når en magisk portal som kan göra gammalt till nytt. Varför behövs den?", fara: "Du sugs in i en tidscykel och åldras 100 år!", img1: "m11_1.png", img2: "m11_2.png" },
+        { title: "Sorteringens labyrint", story: "För att komma vidare måste du sortera föremål. Men vissa är svårare än andra.", fara: "Labyrintens väggar börjar krympa och trycka ihop dig!", img1: "m12_1.png", img2: "m12_2.png" },
+        { title: "De elastiska träsken", story: "Marken här är mjuk och fjädrande. Du måste förstå materialets kraft.", fara: "Du sjunker ner i en kletig sörja av gummi!", img1: "m13_1.png", img2: "m13_2.png" },
+        { title: "Formbytarens kammare", story: "En magiker visar dig ett material som kan bli vad som helst när det värms upp.", fara: "Du blir instängd i en plastbubbla som hårdnar!", img1: "m14_1.png", img2: "m14_2.png" },
+        { title: "Den Stora Smedjan", story: "Du är framme! Bevisa din kunskap om metallernas kung för att tända elden.", fara: "Elden slocknar och mörkret tar över världen!", img1: "m15_1.png", img2: "m15_2.png" }
     ];
 
-    // --- FRÅGEBANK ---
     const questionsPoolMC = [
         { q: "Vad är den tekniska definitionen av ett 'material'?", a: "Fasta ämnen som man kan tillverka saker av.", w: ["Gaser man kan andas.", "Vätskor som flyter.", "Endast saker från djur."] },
         { q: "Vilka ämnen räknas INTE som material i detta sammanhang?", a: "Flytande ämnen och gaser.", w: ["Metaller.", "Plast.", "Trä och sten."] },
@@ -195,7 +192,6 @@
     }
 
     function startGame() {
-        // Slumpa fram 15 frågor: 4 gåtor + 11 flerval (totalt 15)
         let gator = shuffle([...questionsPoolGator]).slice(0, 4);
         let mc = shuffle([...questionsPoolMC]).slice(0, 11);
         gameQuestions = shuffle([...gator, ...mc]);
@@ -226,8 +222,7 @@
         optionsDiv.innerHTML = '';
         inputArea.innerHTML = '';
 
-        if (quest.w) { // Flervalsfråga
-            // Slumpa svarsordningen
+        if (quest.w) {
             let allOpts = shuffle([{t: quest.a, c: true}, ...quest.w.map(opt => ({t: opt, c: false}))]);
             allOpts.forEach(opt => {
                 const btn = document.createElement('button');
@@ -235,7 +230,7 @@
                 btn.onclick = () => checkAnswer(opt.c);
                 optionsDiv.appendChild(btn);
             });
-        } else { // Gåta (Fyll i)
+        } else {
             const input = document.createElement('input');
             input.type = "text";
             input.id = "user-input";
@@ -296,22 +291,20 @@
         
         if (victory) {
             document.getElementById('end-title').innerText = "VINST!";
-            document.getElementById('end-image').src = "https://i.imgur.com/Zri6px0.png";
+            document.getElementById('end-image').src = "gameover1.png";
             document.getElementById('end-text').innerText = "Du har klarat det! Du räddade den stora smedjan, landet Materia och världen kan nu frodas.";
             document.getElementById('end-button').innerText = "Vill du testa igen?";
         } else {
             document.getElementById('end-title').innerText = "DU MISSLYCKADES";
-            document.getElementById('end-image').src = "https://i.imgur.com/Sycqxwx.png";
+            document.getElementById('end-image').src = "gameover2.png";
             document.getElementById('end-text').innerText = "Du klarade det inte! Du räddade inte smedjan, landet Materia eller världen. Allt dör nu på grund av dig.";
             document.getElementById('end-button').innerText = "Börja om";
         }
     }
 
-    // NY FUNKTION för att lösa buggen
     function goToStart() {
         document.getElementById('end-screen').classList.add('hidden');
         document.getElementById('start-screen').classList.remove('hidden');
-        // Nollställ även statusen så det ser snyggt ut nästa gång man startar
         lives = 3;
         currentStepIndex = 0;
     }
