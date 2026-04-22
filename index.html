@@ -55,7 +55,16 @@
 
         h1, h2 { font-family: 'Cinzel', serif; color: #d4af37; margin-top: 0; text-shadow: 2px 2px 4px #000; }
 
-        .story-text { font-size: 1.2rem; line-height: 1.5; margin-bottom: 25px; text-align: left; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 5px; }
+        .story-text { 
+            font-size: 1.2rem; 
+            line-height: 1.5; 
+            margin-bottom: 25px; 
+            text-align: left; 
+            background: rgba(0,0,0,0.2); 
+            padding: 20px; 
+            border-radius: 5px; 
+            border-left: 4px solid #4a3c28;
+        }
 
         .options-container { display: grid; gap: 12px; margin-top: 20px; }
 
@@ -115,7 +124,6 @@
         <div id="story-display" class="story-text"></div>
         
         <div id="question-area">
-            <p id="question-text" style="font-weight: bold; font-size: 1.3rem; margin-bottom: 20px; color: #d4af37;"></p>
             <div id="input-area"></div>
             <div id="options" class="options-container"></div>
         </div>
@@ -141,13 +149,12 @@
     let currentStepIndex = 0;
     let gameQuestions = [];
 
-    // --- DATA ---
     const milestones = [
         { title: "Den viskande porten", story: "Du når gränsen till Materia. Porten kräver att du vet vad världen faktiskt är byggd av.", fara: "Porten slår igen och en tryckvåg stjäl ett liv!", img1: "m1_1.png", img2: "m1_2.png" },
         { title: "De giftiga ångornas dal", story: "Vägen går genom en dal fylld av färgglad dimma. Alla ämnen här är inte användbara.", fara: "Din skyddsmask spricker och du andas in giftgas!", img1: "m2_1.png", img2: "m2_2.png" },
         { title: "De tre urkrafternas korsning", story: "Vägen delar sig i tre. För att välja rätt stig måste du förstå materiens ursprung.", fara: "Du faller ner i en bottenlös ravin!", img1: "m3_1.png", img2: "m3_2.png" },
         { title: "Ur-skogens prövning", story: "Du kliver in i den levande skogen. Här bor material som inte kräver människans hand.", fara: "Skogens rötter vaknar och drar ner dig!", img1: "m4_1.png", img2: "m4_2.png" },
-        { title: "Den mörka gruvan", story: "Du klättrar ner i underjorden där skatterna sitter fast i stenen.", fara: "Ett gruvras utlöses och sten block faller mot dig!", img1: "m5_1.png", img2: "m5_2.png" },
+        { title: "Den mörka gruvan", story: "Du klättrar ner i underjorden där skatterna sitter fast i stenen.", fara: "Ett gruvras utlöses och stenblock faller mot dig!", img1: "m5_1.png", img2: "m5_2.png" },
         { title: "Alkemistens laboratorium", story: "Du når en borg av glas. Här har människor skapat material som naturen aldrig tänkt ut.", fara: "En misslyckad brygd exploderar i ett moln av syra!", img1: "m6_1.png", img2: "m6_2.png" },
         { title: "Stålbron över elden", story: "En bro av metall leder över en flod av lava. Bron kräver en specifik legering.", fara: "Bron blir mjuk och börjar smälta under dina fötter!", img1: "m7_1.png", img2: "m7_2.png" },
         { title: "Keramernas sköra palats", story: "Du går in i ett palats av porslin och glas. Ett felsteg kan krossa allt.", fara: "Palatset spricker och vassa glasskärvor regnar ner!", img1: "m8_1.png", img2: "m8_2.png" },
@@ -178,15 +185,14 @@
     ];
 
     const questionsPoolGator = [
-        { q: "_______ är ett samlande namn på flera ämnen som är elastiska, alltså tänjbara.", a: "Gummi" },
-        { q: "_______ kallas de material som inte är metall och som inte kommer från djur eller växter.", a: "Keramer" },
-        { q: "_______ kallas material som består av två eller flera delar (eller komponenter).", a: "Kompositer" },
-        { q: "_______ är fasta ämnen som man kan tillverka saker av.", a: "Material" },
-        { q: "_______ är ett tillverkat material som någon gång varit mjukt och formbart.", a: "Plast" },
-        { q: "_______ är en legering av järn och kol.", a: "Stål" }
+        { q: "Vilket material är ett samlande namn på flera ämnen som är elastiska, alltså tänjbara?", a: "Gummi" },
+        { q: "Vad kallas de material som inte är metall och som inte kommer från djur eller växter?", a: "Keramer" },
+        { q: "Vad kallas material som består av två eller flera delar (eller komponenter)?", a: "Kompositer" },
+        { q: "Vad kallas fasta ämnen som man kan tillverka saker av?", a: "Material" },
+        { q: "Vad kallas ett tillverkat material som någon gång varit mjukt och formbart?", a: "Plast" },
+        { q: "Vad kallas en legering av järn och kol?", a: "Stål" }
     ];
 
-    // --- LOGIK ---
     function shuffle(array) {
         return array.sort(() => Math.random() - 0.5);
     }
@@ -195,10 +201,8 @@
         let gator = shuffle([...questionsPoolGator]).slice(0, 4);
         let mc = shuffle([...questionsPoolMC]).slice(0, 11);
         gameQuestions = shuffle([...gator, ...mc]);
-        
         lives = 3;
         currentStepIndex = 0;
-        
         document.getElementById('start-screen').classList.add('hidden');
         document.getElementById('end-screen').classList.add('hidden');
         document.getElementById('feedback-screen').classList.add('hidden');
@@ -214,8 +218,9 @@
         document.getElementById('step-display').innerText = `Delmål ${currentStepIndex + 1} / 15`;
         document.getElementById('step-title').innerText = step.title;
         document.getElementById('main-image').src = step.img1;
-        document.getElementById('story-display').innerText = step.story;
-        document.getElementById('question-text').innerText = quest.q;
+        
+        // HÄR SLÅS TEXTERNA IHOP:
+        document.getElementById('story-display').innerText = step.story + " " + quest.q;
         
         const optionsDiv = document.getElementById('options');
         const inputArea = document.getElementById('input-area');
