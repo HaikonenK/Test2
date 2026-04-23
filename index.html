@@ -15,23 +15,19 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
         }
 
         #game-container {
             width: 100%;
             max-width: 1000px;
-            max-height: 96vh;
             background: #2a2a2a;
             border: 3px solid #4a3c28;
             border-radius: 10px;
             padding: 25px;
-            box-sizing: border-box;
             box-shadow: 0 0 30px rgba(0,0,0,0.7);
             text-align: center;
             margin: 10px;
-            overflow-y: auto;
         }
 
         .status-bar {
@@ -50,7 +46,7 @@
 
         img {
             width: 100%;
-            max-height: 25vh;
+            max-height: 350px;
             object-fit: cover;
             border-radius: 8px;
             margin-bottom: 20px;
@@ -114,6 +110,7 @@
         .hidden { display: none; }
         .danger-text { color: #ff6666; font-weight: bold; }
 
+        /* Delad stil för båda Phaser-spelen */
         #phaser-game, #coal-phaser-game {
             width: 100%;
             display: flex;
@@ -212,8 +209,11 @@
     let gameQuestions = [];
     let retryMode = "question";
     
+    // Status för minispelet Vulkanbron
     let bridgeGameCompleted = false;
     let bridgePhaserGame = null;
+
+    // Status för sista minispelet (Kasta kol)
     let coalPhaserGame = null;
 
     const milestones = [
@@ -268,7 +268,7 @@
         document.getElementById('start-screen').classList.add('hidden');
         document.getElementById('game-screen').classList.add('hidden');
         document.getElementById('mini-game-screen').classList.add('hidden');
-        document.getElementById('coal-game-screen').classList.add('hidden'); 
+        document.getElementById('coal-game-screen').classList.add('hidden'); // Gömmer den nya skärmen
         document.getElementById('feedback-screen').classList.add('hidden');
         document.getElementById('end-screen').classList.add('hidden');
     }
@@ -284,7 +284,7 @@
         bridgeGameCompleted = false;
 
         destroyBridgeGame();
-        destroyCoalGame(); 
+        destroyCoalGame(); // Ny återställning
         hideAllScreens();
         document.getElementById('game-screen').classList.remove('hidden');
         renderStep();
@@ -339,13 +339,16 @@
 
     function checkAnswer(isCorrect) {
         if (isCorrect) {
+            // Kontrollera om bron ska spelas
             if (currentStepIndex === 6 && !bridgeGameCompleted) {
                 showBridgeGame();
                 return;
             }
 
             currentStepIndex++;
+            // Kontrollera om spelet är klart
             if (currentStepIndex >= 15) {
+                // ISTÄLLET för att direkt visa showEnd(true), visar vi sista minispelet!
                 showCoalGame();
             } else {
                 renderStep();
@@ -356,7 +359,7 @@
             if (lives <= 0) {
                 showEnd(false);
             } else {
-                showDanger("question"); 
+                showDanger("question"); // Uppdaterad anrop för att skilja på var man dog
             }
         }
     }
@@ -375,6 +378,7 @@
         });
     }
 
+    // NY: Funktion för att visa kolspelet
     function showCoalGame() {
         retryMode = "coalGame";
         hideAllScreens();
@@ -388,6 +392,7 @@
         });
     }
 
+    // Uppdaterad showDanger som tar en sträng istället för en bool
     function showDanger(failType = "question") {
         hideAllScreens();
         document.getElementById('feedback-screen').classList.remove('hidden');
@@ -396,6 +401,10 @@
             retryMode = "bridgeGame";
             document.getElementById('feedback-image').src = milestones[6].img2;
             document.getElementById('feedback-text').innerText = milestones[6].fara;
+        } else if (failType === "coal") {
+            retryMode = "coalGame";
+            document.getElementById('feedback-image').src = milestones[14].img2; // Använder sista bildens fara
+            document.getElementById('feedback-text').innerText = "Du ramlade och slog dig i smedjan! Skynda dig innan lågan dör helt!";
         } else {
             retryMode = "question";
             document.getElementById('feedback-image').src = milestones[currentStepIndex].img2;
@@ -455,7 +464,7 @@
         const displayValue = shields || "💔";
         document.getElementById('life-count').innerText = displayValue;
         document.getElementById('mini-life-count').innerText = displayValue;
-        document.getElementById('coal-life-count').innerText = displayValue; 
+        document.getElementById('coal-life-count').innerText = displayValue; // NY!
     }
 
     // --- BRO SPELET LOGIK ---
@@ -488,6 +497,7 @@
         if (holder) holder.innerHTML = "";
     }
 
+    // Här är din bridgeGame-funktion, exakt som förut:
     function initBridgeGame() {
         destroyBridgeGame();
         const holder = document.getElementById('phaser-game');
@@ -667,14 +677,7 @@
         }
 
         bridgePhaserGame = new Phaser.Game({
-            type: Phaser.AUTO, 
-            scale: {
-                mode: Phaser.Scale.FIT,
-                autoCenter: Phaser.Scale.CENTER_BOTH,
-                parent: 'phaser-game',
-                width: 900,
-                height: 500
-            },
+            type: Phaser.AUTO, width: 900, height: 500, parent: 'phaser-game',
             physics: { default: 'arcade', arcade: { gravity: { y: 1100 }, debug: false } },
             scene: { preload: bridgePreload, create: bridgeCreate, update: bridgeUpdate }
         });
@@ -693,9 +696,21 @@
 
     function coalMiniGameWin() {
         destroyCoalGame();
-        showEnd(true); 
+        showEnd(true); // Man vann hela spelet!
     }
 
+    function coalMiniGameFail() {
+        destroyCoalGame();
+        lives--;
+        updateLives();
+        if (lives <= 0) {
+            showEnd(false); // Game over på liv
+        } else {
+            showDanger("coal"); // Tillbaka till faroskärmen
+        }
+    }
+
+    // Omsluter din coal-game kod för att inte krocka med main/bridge-variabler
     function initCoalGame() {
         destroyCoalGame();
         
@@ -717,11 +732,11 @@
         let cgGameOver = false, cgRespawningCoal = false, cgPlayerRespawning = false;
 
         let cgThrowAngleDeg = 45;
-        let cgCoalScored = 0; 
+        let cgCoalScored = 0; // Återställs varje gång spelet startar
         const cgTargetCoal = 5;
 
         function coalPreload() {
-            this.load.image("bgCoal", "https://i.imgur.com/5XmrUK9.png");
+            this.load.image("bgCoal", "smedja.png");
         }
 
         function coalCreate() {
@@ -733,12 +748,14 @@
             cgDrawFurnace(this);
             cgDrawLava(this);
 
+            // Plattform
             cgPlatform = this.add.rectangle(210, 390, 260, 26, 0x6b6f7a);
             this.physics.add.existing(cgPlatform, true);
             cgPlatformTop = this.add.rectangle(210, 382, 252, 8, 0x9097a5);
             cgPlatformShadow = this.add.rectangle(210, 400, 248, 6, 0x4d525c);
             cgAddBrickLines(this, 210, 390, 260, 26);
 
+            // Fejkblock
             cgFakeBlockBody = this.add.rectangle(360, 300, 120, 22, 0x7b808a);
             cgFakeBlockTop = this.add.rectangle(360, 293, 112, 7, 0xa0a7b5);
             cgFakeBlockShadow = this.add.rectangle(360, 308, 108, 5, 0x555b65);
@@ -747,12 +764,15 @@
             this.physics.add.existing(cgFakeBlockBody);
             cgFakeBlockBody.body.setImmovable(true).setAllowGravity(false);
 
+            // Lava-zon
             cgLavaZone = this.add.rectangle(450, 472, 900, 56, 0xff0000, 0);
             this.physics.add.existing(cgLavaZone, true);
 
+            // Ugn-zon
             cgFurnaceZone = this.add.rectangle(760, 295, 90, 120, 0x00ff00, 0);
             this.physics.add.existing(cgFurnaceZone, true);
 
+            // Spelare
             const playerParts = cgCreatePlayer(this, 120, 335);
             cgPlayerBody = playerParts.body;
             cgPlayerVisual = playerParts.visual;
@@ -761,6 +781,7 @@
             this.physics.add.collider(cgPlayerBody, cgFakeBlockBody, cgOnFakeBlockTouch, null, this);
             this.physics.add.overlap(cgPlayerBody, cgLavaZone, cgOnPlayerInLava, null, this);
 
+            // Spik-zon
             cgSpikeTrapZone = this.add.rectangle(315, 370, 80, 40, 0xff0000, 0);
             this.physics.add.existing(cgSpikeTrapZone, true);
 
@@ -778,6 +799,7 @@
             }
             this.physics.add.overlap(cgPlayerBody, cgSpikeTrapZone, cgTriggerSpikes, null, this);
 
+            // UI
             const textStyle = { fontSize: "18px", color: "#ffffff", stroke: "#000000", strokeThickness: 4 };
 
             cgInstructionText = this.add.text(20, 18, "← → gå, ↑ ↓ vinkel, SPACE hoppa, håll E för kraft, släpp E för kast", textStyle);
@@ -934,6 +956,7 @@
             });
         }
 
+        // Återställer fejkblocket
         function cgResetFakeBlock() {
             cgFakeBlockActivated = false;
             cgFakeBlockBody.setPosition(360, 300);
@@ -942,6 +965,7 @@
             cgFakeBlockShadow.setPosition(360, 308);
         }
 
+        // Återställer spikfällan
         function cgResetSpikes() {
             cgSpikeTrapTriggered = false;
             cgSpikeHitboxes.forEach((hit, i) => {
@@ -951,6 +975,7 @@
             });
         }
 
+        // UPPDATERAD DÖDSLOGIK FÖR MINISPELET
         function cgOnPlayerInLava() {
             if (cgGameOver || cgPlayerRespawning) return;
             cgPlayerRespawning = true; 
@@ -958,23 +983,28 @@
             cgResultText.setText("💀 AJ! Börja om!");
             cgPlayerBody.body.setVelocity(0, 0);
 
+            // Blinkar spelaren röd tillfälligt
             cgPlayerVisual.list.forEach(part => { if (part.setFillStyle) { part.setFillStyle(0xff5555); } });
             
             this.time.delayedCall(900, () => {
-                cgPlayerVisual.list[0].setFillStyle(0x4a2e1d); 
-                cgPlayerVisual.list[1].setFillStyle(0x4a2e1d); 
-                cgPlayerVisual.list[2].setFillStyle(0xffd7b5); 
-                cgPlayerVisual.list[3].setFillStyle(0xffd7b5); 
-                cgPlayerVisual.list[4].setFillStyle(0x6f4a2d); 
-                cgPlayerVisual.list[5].setFillStyle(0xffd7b5); 
-                cgPlayerVisual.list[6].setFillStyle(0x111111); 
+                // Återställ spelarens ursprungliga färg
+                cgPlayerVisual.list[0].setFillStyle(0x4a2e1d); // leg1
+                cgPlayerVisual.list[1].setFillStyle(0x4a2e1d); // leg2
+                cgPlayerVisual.list[2].setFillStyle(0xffd7b5); // arm1
+                cgPlayerVisual.list[3].setFillStyle(0xffd7b5); // arm2
+                cgPlayerVisual.list[4].setFillStyle(0x6f4a2d); // body
+                cgPlayerVisual.list[5].setFillStyle(0xffd7b5); // head
+                cgPlayerVisual.list[6].setFillStyle(0x111111); // eye
 
+                // Flytta tillbaka spelaren
                 cgPlayerBody.setPosition(120, 335);
                 cgPlayerBody.body.setVelocity(0, 0);
 
+                // Straff: Nollställ antal kol i ugnen
                 cgCoalScored = 0;
                 cgUpdateHUD();
 
+                // Återställ fällor
                 cgResetFakeBlock();
                 cgResetSpikes();
 
@@ -1036,19 +1066,13 @@
         }
 
         coalPhaserGame = new Phaser.Game({
-            type: Phaser.AUTO, 
-            scale: {
-                mode: Phaser.Scale.FIT,
-                autoCenter: Phaser.Scale.CENTER_BOTH,
-                parent: 'coal-phaser-game',
-                width: 900,
-                height: 500
-            },
+            type: Phaser.AUTO, width: 900, height: 500, parent: 'coal-phaser-game',
             physics: { default: 'arcade', arcade: { gravity: { y: 700 }, debug: false } },
             scene: { preload: coalPreload, create: coalCreate, update: coalUpdate }
         });
     }
-</script>
 
+</script>
 </body>
 </html>
+
