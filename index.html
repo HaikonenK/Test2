@@ -742,6 +742,7 @@
         function coalCreate() {
             cgCoalScored = 0;
             cgGameOver = false;
+            cgPlayerRespawning = false;
             
             this.add.image(450, 250, "bgCoal").setDisplaySize(900, 500).setDepth(-10);
             cgDrawFurnace(this);
@@ -955,18 +956,61 @@
             });
         }
 
+        // Återställer fejkblocket
+        function cgResetFakeBlock() {
+            cgFakeBlockActivated = false;
+            cgFakeBlockBody.setPosition(360, 300);
+            cgFakeBlockBody.body.setVelocity(0, 0).setAllowGravity(false).setImmovable(true).setGravityY(0);
+            cgFakeBlockTop.setPosition(360, 293);
+            cgFakeBlockShadow.setPosition(360, 308);
+        }
+
+        // Återställer spikfällan
+        function cgResetSpikes() {
+            cgSpikeTrapTriggered = false;
+            cgSpikeHitboxes.forEach((hit, i) => {
+                hit.y = 395;
+                hit.body.reset(hit.x, 395);
+                cgSpikes[i].setVisible(false).setY(395);
+            });
+        }
+
+        // UPPDATERAD DÖDSLOGIK FÖR MINISPELET
         function cgOnPlayerInLava() {
             if (cgGameOver || cgPlayerRespawning) return;
-            cgGameOver = true;
-            cgResultText.setText("💀 AJ!");
+            cgPlayerRespawning = true; 
+            
+            cgResultText.setText("💀 AJ! Börja om!");
             cgPlayerBody.body.setVelocity(0, 0);
 
-            // Blinkar spelaren röd
+            // Blinkar spelaren röd tillfälligt
             cgPlayerVisual.list.forEach(part => { if (part.setFillStyle) { part.setFillStyle(0xff5555); } });
             
-            // Integrering: Om man dör kallar vi på fail-funktionen som drar ett liv och skickar en till danger-skärmen
             this.time.delayedCall(900, () => {
-                coalMiniGameFail();
+                // Återställ spelarens ursprungliga färg
+                cgPlayerVisual.list[0].setFillStyle(0x4a2e1d); // leg1
+                cgPlayerVisual.list[1].setFillStyle(0x4a2e1d); // leg2
+                cgPlayerVisual.list[2].setFillStyle(0xffd7b5); // arm1
+                cgPlayerVisual.list[3].setFillStyle(0xffd7b5); // arm2
+                cgPlayerVisual.list[4].setFillStyle(0x6f4a2d); // body
+                cgPlayerVisual.list[5].setFillStyle(0xffd7b5); // head
+                cgPlayerVisual.list[6].setFillStyle(0x111111); // eye
+
+                // Flytta tillbaka spelaren
+                cgPlayerBody.setPosition(120, 335);
+                cgPlayerBody.body.setVelocity(0, 0);
+
+                // Straff: Nollställ antal kol i ugnen
+                cgCoalScored = 0;
+                cgUpdateHUD();
+
+                // Återställ fällor
+                cgResetFakeBlock();
+                cgResetSpikes();
+
+                cgPlayerRespawning = false;
+                cgResultText.setText("");
+                cgSpawnCoal(this);
             });
         }
 
@@ -997,7 +1041,7 @@
             cgCoal.setVisible(false); cgCoal.body.enable = false; cgRespawningCoal = true;
 
             if (cgCoalScored >= cgTargetCoal) {
-                cgGameOver = true; // Stoppar spelet
+                cgGameOver = true; 
                 this.time.delayedCall(1000, () => {
                     coalMiniGameWin();
                 });
