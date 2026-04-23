@@ -162,10 +162,10 @@
             <span class="lives" id="mini-life-count">🛡️🛡️🛡️</span>
         </div>
 
-        <h2>Vulkanbron</h2>
+        <h2>Den stora smedjan</h2>
         <div class="story-text">
-            Du har svarat rätt – men bron tänker inte släppa förbi dig gratis.
-            Hoppa över blocken, undvik fällorna och ta dig till porten på andra sidan.
+            Nu avgörs allt. Få i fem kolbitar i smältugnen för att tända elden och rädda världen.
+            Men smedjan tänker inte släppa igenom dig utan ett sista troll.
         </div>
 
         <div id="phaser-game"></div>
@@ -193,8 +193,8 @@
     let currentStepIndex = 0;
     let gameQuestions = [];
     let retryMode = "question";
-    let bridgeGameCompleted = false;
-    let bridgePhaserGame = null;
+    let forgeMiniGameCompleted = false;
+    let forgePhaserGame = null;
 
     const milestones = [
         { title: "Den viskande porten", story: "Du når gränsen till Materia. Porten kräver att du vet vad världen faktiskt är byggd av.", fara: "Porten slår igen och en tryckvåg stjäl ett liv!", img1: "m1_1.png", img2: "m1_2.png" },
@@ -260,9 +260,9 @@
         lives = 3;
         currentStepIndex = 0;
         retryMode = "question";
-        bridgeGameCompleted = false;
+        forgeMiniGameCompleted = false;
 
-        destroyBridgeGame();
+        destroyForgeGame();
         hideAllScreens();
         document.getElementById('game-screen').classList.remove('hidden');
         renderStep();
@@ -317,8 +317,8 @@
 
     function checkAnswer(isCorrect) {
         if (isCorrect) {
-            if (currentStepIndex === 6 && !bridgeGameCompleted) {
-                showBridgeGame();
+            if (currentStepIndex === 14 && !forgeMiniGameCompleted) {
+                showForgeGame();
                 return;
             }
 
@@ -339,28 +339,28 @@
         }
     }
 
-    function showBridgeGame() {
-        retryMode = "bridgeGame";
+    function showForgeGame() {
+        retryMode = "forgeGame";
         hideAllScreens();
         document.getElementById('mini-game-screen').classList.remove('hidden');
-        document.getElementById('mini-step-display').innerText = "Bonusprövning – Vulkanbron";
+        document.getElementById('mini-step-display').innerText = "Slutprövning – Den stora smedjan";
         updateLives();
 
         requestAnimationFrame(() => {
             setTimeout(() => {
-                initBridgeGame();
+                initForgeGame();
             }, 50);
         });
     }
 
-    function showDanger(isBridgeFail = false) {
+    function showDanger(isForgeFail = false) {
         hideAllScreens();
         document.getElementById('feedback-screen').classList.remove('hidden');
 
-        if (isBridgeFail) {
-            retryMode = "bridgeGame";
-            document.getElementById('feedback-image').src = milestones[6].img2;
-            document.getElementById('feedback-text').innerText = milestones[6].fara;
+        if (isForgeFail) {
+            retryMode = "forgeGame";
+            document.getElementById('feedback-image').src = milestones[14].img2;
+            document.getElementById('feedback-text').innerText = milestones[14].fara;
         } else {
             retryMode = "question";
             document.getElementById('feedback-image').src = milestones[currentStepIndex].img2;
@@ -369,8 +369,8 @@
     }
 
     function retryQuestion() {
-        if (retryMode === "bridgeGame") {
-            showBridgeGame();
+        if (retryMode === "forgeGame") {
+            showForgeGame();
             return;
         }
 
@@ -380,7 +380,7 @@
     }
 
     function showEnd(victory) {
-        destroyBridgeGame();
+        destroyForgeGame();
         hideAllScreens();
         document.getElementById('end-screen').classList.remove('hidden');
 
@@ -398,14 +398,14 @@
     }
 
     function goToStart() {
-        destroyBridgeGame();
+        destroyForgeGame();
         hideAllScreens();
         document.getElementById('start-screen').classList.remove('hidden');
 
         lives = 3;
         currentStepIndex = 0;
         retryMode = "question";
-        bridgeGameCompleted = false;
+        forgeMiniGameCompleted = false;
     }
 
     function updateLives() {
@@ -416,444 +416,461 @@
         document.getElementById('mini-life-count').innerText = displayValue;
     }
 
-    function bridgeMiniGameWin() {
-        destroyBridgeGame();
-        bridgeGameCompleted = true;
-        currentStepIndex++;
-        hideAllScreens();
-        document.getElementById('game-screen').classList.remove('hidden');
-        renderStep();
+    function forgeMiniGameWin() {
+        destroyForgeGame();
+        forgeMiniGameCompleted = true;
+        showEnd(true);
     }
 
-    function bridgeMiniGameFail() {
-        destroyBridgeGame();
-        lives--;
-        updateLives();
-
-        if (lives <= 0) {
-            showEnd(false);
-        } else {
-            showDanger(true);
-        }
-    }
-
-    function destroyBridgeGame() {
-        if (bridgePhaserGame) {
-            bridgePhaserGame.destroy(true);
-            bridgePhaserGame = null;
+    function destroyForgeGame() {
+        if (forgePhaserGame) {
+            forgePhaserGame.destroy(true);
+            forgePhaserGame = null;
         }
         const holder = document.getElementById('phaser-game');
         if (holder) holder.innerHTML = "";
     }
 
-    function initBridgeGame() {
-        destroyBridgeGame();
+    function initForgeGame() {
+        destroyForgeGame();
 
         const holder = document.getElementById('phaser-game');
         holder.innerHTML = "";
 
-        let bgPlayerBody;
-        let bgPlayerVisual;
-        let bgCursors;
-        let bgPlatforms;
-        let bgLavaZone;
-        let bgGoalZone;
-        let bgGameOver = false;
-        let bgFacing = 1;
-        let bgWalkTime = 0;
+        const config = {
+          type: Phaser.AUTO,
+          width: 900,
+          height: 500,
+          parent: 'phaser-game',
+          physics: {
+            default: 'arcade',
+            arcade: {
+              gravity: { y: 700 },
+              debug: false
+            }
+          },
+          scene: {
+            preload,
+            create,
+            update
+          }
+        };
 
-        let bgFallingBlocks = [];
-        let bgFakeBlock = null;
-        let bgFakeBlockTriggered = false;
+        forgePhaserGame = new Phaser.Game(config);
 
-        let bgSpikeTrapBlock = null;
-        let bgSpikeTrapTriggered = false;
-        let bgSpikeTrapZone = null;
-        let bgSpikeHitboxes = [];
-        let bgSpikeGraphics = [];
+        let bgImage;
+        let playerBody, playerVisual;
+        let coal = null, furnaceZone, platform, lavaZone;
+        let platformTop, platformShadow;
+        let fakeBlockBody, fakeBlockTop, fakeBlockShadow, fakeBlockActivated = false;
 
-        function bridgePreload() {
-            this.load.image('bridgeBg', 'volcano.png');
+        let spikeTrapZone;
+        let spikes = [];
+        let spikeHitboxes = [];
+        let spikeTrapTriggered = false;
+        let spikePositions = [265, 295, 325];
+
+        let chargeBarBg, chargeBarFill, resultText, angleText, coalCountText, instructionText;
+        let cursors, spaceKey, eKey;
+
+        let isCharging = false, chargePower = 0, chargeDirection = 1, coalThrown = false;
+        let gameOver = false, respawningCoal = false, playerRespawning = false;
+
+        let throwAngleDeg = 45;
+        let coalScored = 0;
+        const targetCoal = 5;
+
+        function preload() {
+          this.load.image("bg", "smedja.png");
         }
 
-        function bridgeCreate() {
-            bgGameOver = false;
-            bgFacing = 1;
-            bgWalkTime = 0;
-            bgFakeBlockTriggered = false;
-            bgSpikeTrapTriggered = false;
-            bgSpikeHitboxes = [];
-            bgSpikeGraphics = [];
-            bgFallingBlocks = [];
+        function create() {
+          bgImage = this.add.image(450, 250, "bg").setDisplaySize(900, 500).setDepth(-10);
 
-            this.add.image(450, 250, 'bridgeBg')
-                .setDisplaySize(900, 500)
-                .setDepth(-10);
+          drawFurnace(this);
+          drawLava(this);
 
-            createPlatformLevel(this);
+          platform = this.add.rectangle(210, 390, 260, 26, 0x6b6f7a);
+          this.physics.add.existing(platform, true);
+          platformTop = this.add.rectangle(210, 382, 252, 8, 0x9097a5);
+          platformShadow = this.add.rectangle(210, 400, 248, 6, 0x4d525c);
+          addBrickLines(this, 210, 390, 260, 26);
 
-            const playerParts = createPlayer(this, 110, 335);
-            bgPlayerBody = playerParts.body;
-            bgPlayerVisual = playerParts.visual;
+          fakeBlockBody = this.add.rectangle(360, 300, 120, 22, 0x7b808a);
+          fakeBlockTop = this.add.rectangle(360, 293, 112, 7, 0xa0a7b5);
+          fakeBlockShadow = this.add.rectangle(360, 308, 108, 5, 0x555b65);
+          addBrickLines(this, 360, 300, 120, 22, 0x60656f, 0.35);
 
-            this.physics.add.collider(bgPlayerBody, bgPlatforms);
-            this.physics.add.overlap(bgPlayerBody, bgLavaZone, () => lose(this, '💀 Du föll i lavan!'));
-            this.physics.add.overlap(bgPlayerBody, bgGoalZone, () => win(this));
+          this.physics.add.existing(fakeBlockBody);
+          fakeBlockBody.body.setImmovable(true).setAllowGravity(false);
 
-            if (bgSpikeTrapZone) {
-                this.physics.add.overlap(bgPlayerBody, bgSpikeTrapZone, () => triggerSpikeTrap(this));
-            }
+          lavaZone = this.add.rectangle(450, 472, 900, 56, 0xff0000, 0);
+          this.physics.add.existing(lavaZone, true);
 
-            bgCursors = this.input.keyboard.createCursorKeys();
+          furnaceZone = this.add.rectangle(760, 295, 90, 120, 0x00ff00, 0);
+          this.physics.add.existing(furnaceZone, true);
 
-            this.add.text(20, 16, 'Ta dig över vulkanbron', {
-                fontSize: '24px',
-                color: '#ffffff',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4
-            });
+          const playerParts = createPlayer(this, 120, 335);
+          playerBody = playerParts.body;
+          playerVisual = playerParts.visual;
 
-            this.add.text(20, 46, '← → spring, ↑ hoppa', {
-                fontSize: '16px',
-                color: '#d7dde5',
-                stroke: '#000000',
-                strokeThickness: 3
-            });
+          this.physics.add.collider(playerBody, platform);
+          this.physics.add.collider(playerBody, fakeBlockBody, onFakeBlockTouch, null, this);
+          this.physics.add.overlap(playerBody, lavaZone, onPlayerInLava, null, this);
+
+          spikeTrapZone = this.add.rectangle(315, 370, 80, 40, 0xff0000, 0);
+          this.physics.add.existing(spikeTrapZone, true);
+
+          for (let i = 0; i < 3; i++) {
+            const s = this.add.triangle(0, 395, 0, 18, 9, 0, 18, 18, 0xd9d9d9).setVisible(false);
+            spikes.push(s);
+
+            const h = this.add.rectangle(0, 395, 14, 20, 0xff0000, 0);
+            this.physics.add.existing(h);
+            h.body.setAllowGravity(false);
+            h.body.setImmovable(true);
+            h.setVisible(false);
+            spikeHitboxes.push(h);
+
+            this.physics.add.overlap(playerBody, h, onPlayerInLava, null, this);
+          }
+
+          this.physics.add.overlap(playerBody, spikeTrapZone, triggerSpikes, null, this);
+
+          const textStyle = {
+            fontSize: "18px",
+            color: "#ffffff",
+            stroke: "#000000",
+            strokeThickness: 4
+          };
+
+          instructionText = this.add.text(
+            20,
+            18,
+            "← → gå, ↑ ↓ vinkel, SPACE hoppa, håll E för kraft, släpp E för kast",
+            textStyle
+          );
+
+          angleText = this.add.text(20, 48, "", { ...textStyle, fontSize: "20px", color: "#ffe08a" });
+          coalCountText = this.add.text(20, 76, "", { ...textStyle, fontSize: "22px" });
+          resultText = this.add.text(20, 106, "", { ...textStyle, fontSize: "24px" });
+
+          chargeBarBg = this.add.rectangle(220, 145, 220, 20, 0x222222).setOrigin(0, 0.5);
+          chargeBarFill = this.add.rectangle(220, 145, 0, 14, 0xffb347).setOrigin(0, 0.5);
+
+          cursors = this.input.keyboard.createCursorKeys();
+          spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+          eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+
+          spawnCoal(this);
+          updateHUD();
         }
 
-        function bridgeUpdate(_, delta) {
-            if (bgGameOver) return;
+        function update(_, delta) {
+          if (!gameOver && !coalThrown && !respawningCoal && !playerRespawning) {
+            playerBody.body.setVelocityX(0);
 
-            bgPlayerBody.body.setVelocityX(0);
+            if (cursors.left.isDown) playerBody.body.setVelocityX(-220);
+            else if (cursors.right.isDown) playerBody.body.setVelocityX(220);
 
-            if (bgCursors.left.isDown) {
-                bgPlayerBody.body.setVelocityX(-280);
-                bgFacing = -1;
-            } else if (bgCursors.right.isDown) {
-                bgPlayerBody.body.setVelocityX(280);
-                bgFacing = 1;
+            if (Phaser.Input.Keyboard.JustDown(spaceKey) && playerBody.body.blocked.down) {
+              playerBody.body.setVelocityY(-430);
             }
 
-            if (bgCursors.up.isDown && bgPlayerBody.body.blocked.down) {
-                bgPlayerBody.body.setVelocityY(-540);
+            if (cursors.up.isDown && !isCharging) {
+              throwAngleDeg = Math.min(75, throwAngleDeg + 0.25 * delta / 16.666);
+            }
+            if (cursors.down.isDown && !isCharging) {
+              throwAngleDeg = Math.max(20, throwAngleDeg - 0.25 * delta / 16.666);
+            }
+          } else {
+            playerBody.body.setVelocityX(0);
+          }
+
+          playerVisual.x = playerBody.x;
+          playerVisual.y = playerBody.y - 5;
+          updatePlayerLook(playerVisual, playerBody.body);
+
+          if (coal && !coalThrown && !respawningCoal) {
+            coal.x = playerBody.x + 28;
+            coal.y = playerBody.y - 20;
+            if (coal.body) coal.body.reset(coal.x, coal.y);
+          }
+
+          fakeBlockTop.x = fakeBlockBody.x;
+          fakeBlockTop.y = fakeBlockBody.y - 7;
+          fakeBlockShadow.x = fakeBlockBody.x;
+          fakeBlockShadow.y = fakeBlockBody.y + 8;
+
+          if (!coalThrown && !gameOver && !respawningCoal && !playerRespawning) {
+            if (Phaser.Input.Keyboard.JustDown(eKey)) {
+              isCharging = true;
+              chargePower = 0;
+              chargeDirection = 1;
+              resultText.setText("");
             }
 
-            bgWalkTime += delta;
+            if (isCharging && eKey.isDown) {
+              chargePower += chargeDirection * delta * 0.35;
 
-            bgPlayerVisual.x = bgPlayerBody.x;
-            bgPlayerVisual.y = bgPlayerBody.y - 5;
+              if (chargePower >= 100) {
+                chargePower = 100;
+                chargeDirection = -1;
+              } else if (chargePower <= 0) {
+                chargePower = 0;
+                chargeDirection = 1;
+              }
 
-            updatePlayerLook(bgPlayerVisual, bgPlayerBody.body, bgWalkTime, bgFacing);
-
-            if (bgPlayerBody.y > 560 && !bgGameOver) {
-                lose(this, '💀 Du föll i lavan!');
+              chargeBarFill.width = chargePower * 2;
             }
 
-            if (
-                bgFakeBlock &&
-                !bgFakeBlockTriggered &&
-                bgPlayerBody.body.blocked.down &&
-                bgPlayerBody.x > bgFakeBlock.x - bgFakeBlock.width / 2 &&
-                bgPlayerBody.x < bgFakeBlock.x + bgFakeBlock.width / 2 &&
-                Math.abs(bgPlayerBody.y - (bgFakeBlock.y - 35)) < 26
-            ) {
-                triggerFakeBlock(this);
+            if (isCharging && Phaser.Input.Keyboard.JustUp(eKey)) {
+              isCharging = false;
+              throwCoal();
             }
+          }
 
-            bgFallingBlocks.forEach(block => {
-                if (!block || block.falling || bgGameOver) return;
-
-                const onBlock =
-                    bgPlayerBody.body.blocked.down &&
-                    bgPlayerBody.x > block.x - block.width / 2 &&
-                    bgPlayerBody.x < block.x + block.width / 2 &&
-                    Math.abs(bgPlayerBody.y - (block.y - 35)) < 26;
-
-                if (onBlock) {
-                    block.timer += delta;
-                    if (block.timer > 1500) {
-                        triggerFallingBlock(this, block);
-                    }
-                } else {
-                    block.timer = 0;
-                }
-            });
-
-            if (bgSpikeTrapTriggered && !bgGameOver) {
-                for (const spike of bgSpikeHitboxes) {
-                    if (!spike) continue;
-
-                    const playerBounds = bgPlayerBody.getBounds();
-                    const spikeBounds = spike.getBounds();
-
-                    if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, spikeBounds)) {
-                        lose(this, '💀 Du sprang rakt på spikarna!');
-                        break;
-                    }
-                }
-            }
+          updateHUD();
         }
 
-        function createPlatformLevel(scene) {
-            bgPlatforms = scene.physics.add.staticGroup();
-            bgLavaZone = scene.physics.add.staticGroup();
-            bgGoalZone = scene.physics.add.staticGroup();
-
-            addStonePlatform(scene, 110, 390, 170, 28); // start safe
-            addFallingPlatform(scene, 280, 350, 90, 24);
-            bgFakeBlock = addFallingPlatform(scene, 420, 290, 90, 24);
-            addFallingPlatform(scene, 565, 340, 45, 24);
-            bgSpikeTrapBlock = addFallingPlatform(scene, 700, 255, 90, 24);
-            addFallingPlatform(scene, 835, 385, 120, 28);
-
-            const trapZoneX = bgSpikeTrapBlock.x + bgSpikeTrapBlock.width / 4;
-            bgSpikeTrapZone = scene.add.rectangle(
-                trapZoneX,
-                bgSpikeTrapBlock.y - 22,
-                bgSpikeTrapBlock.width / 2,
-                30,
-                0xff0000,
-                0
-            );
-            scene.physics.add.existing(bgSpikeTrapZone, true);
-
-            addLavaHitbox(scene, 450, 472, 900, 56);
-
-            const doorBack = scene.add.rectangle(845, 335, 46, 92, 0x203020);
-            const door = scene.add.rectangle(845, 335, 34, 80, 0x64ff8a);
-            const glow = scene.add.rectangle(845, 335, 56, 102, 0x64ff8a, 0.18);
-
-            scene.physics.add.existing(door, true);
-            bgGoalZone.add(door);
-
-            doorBack.setDepth(1);
-            glow.setDepth(0);
-            door.setDepth(2);
+        function addBrickLines(scene, x, y, width, height, color = 0x585d68, alpha = 0.28) {
+          const brickCount = Math.max(2, Math.floor(width / 26));
+          for (let i = 0; i < brickCount; i++) {
+            const px = x - width / 2 + 13 + i * (width / brickCount);
+            scene.add.rectangle(px, y, 2, height - 6, color, alpha);
+          }
         }
 
-        function addStonePlatform(scene, x, y, width, height) {
-            const base = scene.add.rectangle(x, y, width, height, 0x6b6f7a);
-            const top = scene.add.rectangle(x, y - height / 2 + 4, width - 6, 8, 0x9097a5);
-            const shadow = scene.add.rectangle(x, y + height / 2 - 4, width - 8, 6, 0x4d525c);
+        function drawFurnace(scene) {
+          const g = scene.add.graphics();
+          g.fillStyle(0x3a2a22, 1);
+          g.fillRoundedRect(690, 170, 145, 200, 12);
+          g.fillStyle(0x5a4335, 1);
+          g.fillRect(700, 170, 125, 12);
+          g.fillStyle(0x160d08, 1);
+          g.fillRoundedRect(725, 225, 74, 98, 8);
+          g.fillStyle(0xff6a00, 0.9);
+          g.fillEllipse(762, 275, 52, 66);
+          g.fillStyle(0xffc14d, 0.95);
+          g.fillEllipse(762, 275, 28, 38);
+          g.fillStyle(0xfff0a0, 0.55);
+          g.fillEllipse(762, 270, 12, 16);
+          g.fillStyle(0x4b372b, 1);
+          g.fillRect(744, 132, 36, 40);
+          g.fillStyle(0x6b5240, 1);
+          g.fillRect(740, 126, 44, 8);
+          g.fillStyle(0x2a1d16, 1);
+          g.fillRect(700, 366, 122, 10);
 
-            scene.physics.add.existing(base, true);
-            bgPlatforms.add(base);
-
-            top.setDepth(2);
-            shadow.setDepth(1);
-
-            const brickCount = Math.max(2, Math.floor(width / 26));
-            for (let i = 0; i < brickCount; i++) {
-                const px = x - width / 2 + 13 + i * (width / brickCount);
-                scene.add.rectangle(px, y, 2, height - 6, 0x585d68, 0.35);
-            }
-
-            return { x, y, width, height, base, top, shadow };
+          for (let i = 0; i < 8; i++) {
+            g.fillStyle(i % 2 === 0 ? 0xff8c1a : 0xffc14d, 0.65);
+            g.fillCircle(734 + i * 8, 212 - Phaser.Math.Between(0, 18), Phaser.Math.Between(2, 4));
+          }
         }
 
-        function addFallingPlatform(scene, x, y, width, height) {
-            const platform = addStonePlatform(scene, x, y, width, height);
-            platform.timer = 0;
-            platform.falling = false;
-            bgFallingBlocks.push(platform);
-            return platform;
-        }
+        function drawLava(scene) {
+          scene.add.rectangle(450, 470, 900, 60, 0xff4d00);
+          scene.add.rectangle(450, 452, 900, 14, 0xffb347, 0.65);
 
-        function triggerFallingBlock(scene, block) {
-            if (!block || block.falling) return;
-            block.falling = true;
-
-            if (block.base && block.base.active) {
-                bgPlatforms.remove(block.base, true, true);
-            }
-
-            scene.tweens.add({
-                targets: [block.base, block.top, block.shadow],
-                y: '+=150',
-                angle: Phaser.Math.Between(-20, 20),
-                alpha: 0,
-                duration: 500,
-                ease: 'Quad.easeIn',
-                onComplete: () => {
-                    if (block.base) block.base.destroy();
-                    if (block.top) block.top.destroy();
-                    if (block.shadow) block.shadow.destroy();
-                }
-            });
-        }
-
-        function addLavaHitbox(scene, x, y, width, height) {
-            const zone = scene.add.rectangle(x, y, width, height, 0xff0000, 0);
-            scene.physics.add.existing(zone, true);
-            bgLavaZone.add(zone);
+          const g = scene.add.graphics();
+          for (let i = 0; i < 26; i++) {
+            g.fillStyle(i % 2 === 0 ? 0xffc14d : 0xff8a1a, 0.75);
+            g.fillEllipse(i * 36 + 10, 466 + Phaser.Math.Between(-5, 5), 26, 10);
+          }
         }
 
         function createPlayer(scene, x, y) {
-            const visual = scene.add.container(x, y);
+          const visual = scene.add.container(x, y);
 
-            const body = scene.add.rectangle(0, 8, 18, 26, 0x6f4a2d);
-            const head = scene.add.circle(0, -14, 9, 0xffd7b5);
-            const eye = scene.add.circle(3, -15, 1.5, 0x111111);
-            const leg1 = scene.add.rectangle(-5, 28, 5, 16, 0x4a2e1d);
-            const leg2 = scene.add.rectangle(5, 28, 5, 16, 0x4a2e1d);
-            const arm1 = scene.add.rectangle(-12, 8, 4, 14, 0xffd7b5);
-            const arm2 = scene.add.rectangle(12, 8, 4, 14, 0xffd7b5);
+          const body = scene.add.rectangle(0, 8, 18, 26, 0x6f4a2d);
+          const head = scene.add.circle(0, -14, 9, 0xffd7b5);
+          const eye = scene.add.circle(3, -15, 1.5, 0x111111);
+          const leg1 = scene.add.rectangle(-5, 28, 5, 16, 0x4a2e1d);
+          const leg2 = scene.add.rectangle(5, 28, 5, 16, 0x4a2e1d);
+          const arm1 = scene.add.rectangle(-12, 8, 4, 14, 0xffd7b5);
+          const arm2 = scene.add.rectangle(12, 8, 4, 14, 0xffd7b5);
 
-            visual.add([leg1, leg2, arm1, arm2, body, head, eye]);
+          visual.add([leg1, leg2, arm1, arm2, body, head, eye]);
+          visual.leg1 = leg1;
+          visual.leg2 = leg2;
+          visual.arm1 = arm1;
+          visual.arm2 = arm2;
 
-            visual.leg1 = leg1;
-            visual.leg2 = leg2;
-            visual.arm1 = arm1;
-            visual.arm2 = arm2;
+          const physicsBody = scene.add.rectangle(x, y, 18, 44, 0xffffff, 0);
+          scene.physics.add.existing(physicsBody);
+          physicsBody.body.setCollideWorldBounds(true);
+          physicsBody.body.setDragX(900);
 
-            const physicsBody = scene.add.rectangle(x, y, 18, 44, 0xffffff, 0);
-            scene.physics.add.existing(physicsBody);
-            physicsBody.body.setCollideWorldBounds(true);
-            physicsBody.body.setBounce(0);
-            physicsBody.body.setDragX(800);
-            physicsBody.body.setMaxVelocity(300, 900);
-
-            return { body: physicsBody, visual };
+          return { body: physicsBody, visual };
         }
 
-        function updatePlayerLook(playerVisual, playerBody, walkTime, facingDir) {
-            playerVisual.setScale(facingDir, 1);
+        function updatePlayerLook(visual, body) {
+          if (body.velocity.x > 1) visual.setScale(1, 1);
+          else if (body.velocity.x < -1) visual.setScale(-1, 1);
 
-            const speed = Math.abs(playerBody.velocity.x);
-            const onGround = playerBody.blocked.down;
+          const speed = Math.abs(body.velocity.x);
+          const onGround = body.blocked.down;
 
-            if (!onGround) {
-                playerVisual.leg1.rotation = 0.45;
-                playerVisual.leg2.rotation = -0.45;
-                playerVisual.arm1.rotation = -0.5;
-                playerVisual.arm2.rotation = 0.5;
-                return;
-            }
+          if (!onGround) {
+            visual.leg1.rotation = 0.45;
+            visual.leg2.rotation = -0.45;
+            visual.arm1.rotation = -0.5;
+            visual.arm2.rotation = 0.5;
+            return;
+          }
 
-            if (speed > 10) {
-                const swing = Math.sin(walkTime * 0.02) * 0.7;
-                playerVisual.leg1.rotation = swing;
-                playerVisual.leg2.rotation = -swing;
-                playerVisual.arm1.rotation = -swing;
-                playerVisual.arm2.rotation = swing;
-            } else {
-                playerVisual.leg1.rotation = 0;
-                playerVisual.leg2.rotation = 0;
-                playerVisual.arm1.rotation = 0;
-                playerVisual.arm2.rotation = 0;
-            }
+          if (speed > 10) {
+            const swing = Math.sin(Date.now() * 0.02) * 0.6;
+            visual.leg1.rotation = swing;
+            visual.leg2.rotation = -swing;
+            visual.arm1.rotation = -swing;
+            visual.arm2.rotation = swing;
+          } else {
+            visual.leg1.rotation = 0;
+            visual.leg2.rotation = 0;
+            visual.arm1.rotation = 0;
+            visual.arm2.rotation = 0;
+          }
         }
 
-        function triggerFakeBlock(scene) {
-            if (bgFakeBlockTriggered || bgGameOver) return;
-            bgFakeBlockTriggered = true;
-            triggerFallingBlock(scene, bgFakeBlock);
+        function onFakeBlockTouch(player, block) {
+          if (fakeBlockActivated || playerRespawning) return;
+
+          if (player.body.touching.down && block.body.touching.up) {
+            fakeBlockActivated = true;
+            player.scene.tweens.add({
+              targets: [fakeBlockBody, fakeBlockTop, fakeBlockShadow],
+              x: '+=3',
+              yoyo: true,
+              repeat: 5,
+              duration: 40,
+              onComplete: () => {
+                fakeBlockBody.body.setImmovable(false).setAllowGravity(true).setGravityY(1200);
+              }
+            });
+          }
         }
 
-        function triggerSpikeTrap(scene) {
-            if (bgSpikeTrapTriggered || bgGameOver) return;
-            bgSpikeTrapTriggered = true;
+        function triggerSpikes() {
+          if (spikeTrapTriggered || playerRespawning || gameOver) return;
+          spikeTrapTriggered = true;
 
-            const block = bgSpikeTrapBlock;
-            const spikePositions = [block.x + 8, block.x + 24, block.x + 40];
+          const startX = Phaser.Utils.Array.GetRandom(spikePositions);
 
-            spikePositions.forEach((xPos) => {
-                const tri = scene.add.triangle(
-                    xPos,
-                    block.y + 8,
-                    0, 18,
-                    9, 0,
-                    18, 18,
-                    0xd9d9d9
-                );
+          spikeHitboxes.forEach((hit, i) => {
+            const xPos = startX + (i - 1) * 20;
 
-                const hitbox = scene.add.rectangle(xPos, block.y + 10, 14, 22, 0xff0000, 0);
+            spikes[i].setX(xPos).setVisible(true);
+            hit.setX(xPos);
+            hit.body.reset(xPos, 395);
 
-                scene.physics.add.existing(hitbox, true);
-
-                bgSpikeGraphics.push(tri);
-                bgSpikeHitboxes.push(hitbox);
+            this.tweens.add({
+              targets: [spikes[i], hit],
+              y: '-=25',
+              duration: 80,
+              ease: 'Back.easeOut'
             });
-
-            scene.tweens.add({
-                targets: [...bgSpikeGraphics, ...bgSpikeHitboxes],
-                y: '-=28',
-                duration: 90,
-                ease: 'Power2'
-            });
+          });
         }
 
-        function lose(scene, text = '💀 Du dog!') {
-            if (bgGameOver) return;
-            bgGameOver = true;
-
-            bgPlayerBody.body.setVelocity(0, 0);
-
-            bgPlayerVisual.list.forEach(part => {
-                if (part.setFillStyle) {
-                    part.setFillStyle(0xff5555);
-                }
-            });
-
-            scene.tweens.add({
-                targets: bgPlayerVisual,
-                x: bgPlayerVisual.x + 5,
-                yoyo: true,
-                repeat: 5,
-                duration: 50
-            });
-
-            scene.add.text(240, 200, text, {
-                fontSize: '30px',
-                color: '#ff6b5f',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4
-            });
-
-            scene.time.delayedCall(900, () => {
-                bridgeMiniGameFail();
-            });
+        function resetSpikes() {
+          spikeTrapTriggered = false;
+          spikeHitboxes.forEach((hit, i) => {
+            hit.y = 395;
+            hit.body.reset(hit.x, 395);
+            spikes[i].setVisible(false).setY(395);
+          });
         }
 
-        function win(scene) {
-            if (bgGameOver) return;
-            bgGameOver = true;
+        function onPlayerInLava() {
+          if (gameOver || playerRespawning) return;
+          playerRespawning = true;
 
-            bgPlayerBody.body.setVelocity(0, 0);
+          resultText.setText("💀 TROLLAD!");
+          playerBody.body.setVelocity(0, 0);
 
-            scene.add.text(255, 200, '🎉 Du klarade vulkanbron!', {
-                fontSize: '30px',
-                color: '#63ff9b',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4
-            });
-
-            scene.time.delayedCall(900, () => {
-                bridgeMiniGameWin();
-            });
+          this.time.delayedCall(600, () => {
+            playerBody.setPosition(120, 335);
+            resetFakeBlock();
+            resetSpikes();
+            playerRespawning = false;
+            resultText.setText("");
+          });
         }
 
-        bridgePhaserGame = new Phaser.Game({
-            type: Phaser.AUTO,
-            width: 900,
-            height: 500,
-            parent: 'phaser-game',
-            physics: {
-                default: 'arcade',
-                arcade: {
-                    gravity: { y: 1100 },
-                    debug: false
-                }
-            },
-            scene: {
-                preload: bridgePreload,
-                create: bridgeCreate,
-                update: bridgeUpdate
-            }
-        });
+        function resetFakeBlock() {
+          fakeBlockActivated = false;
+          fakeBlockBody.setPosition(360, 300);
+          fakeBlockBody.body.setVelocity(0, 0).setAllowGravity(false).setImmovable(true).setGravityY(0);
+          fakeBlockTop.setPosition(360, 293);
+          fakeBlockShadow.setPosition(360, 308);
+        }
+
+        function spawnCoal(scene) {
+          if (!coal) {
+            coal = scene.add.circle(0, 0, 10, 0x222222);
+            scene.physics.add.existing(coal);
+            scene.physics.add.collider(coal, platform, onCoalPlatformHit, null, scene);
+            scene.physics.add.overlap(coal, furnaceZone, onCoalInFurnace, null, scene);
+            scene.physics.add.overlap(coal, lavaZone, onCoalInLava, null, scene);
+          }
+
+          coal.setActive(true).setVisible(true);
+          coal.body.enable = true;
+          coal.body.setAllowGravity(false).setVelocity(0, 0).setImmovable(true);
+          coalThrown = false;
+          respawningCoal = false;
+          chargeBarFill.width = 0;
+        }
+
+        function throwCoal() {
+          coalThrown = true;
+          const power = Phaser.Math.Linear(180, 520, chargePower / 100);
+          const angleRad = Phaser.Math.DegToRad(throwAngleDeg);
+          coal.body.setAllowGravity(true).setVelocity(Math.cos(angleRad) * power, -Math.sin(angleRad) * power);
+        }
+
+        function onCoalInFurnace() {
+          if (gameOver || !coalThrown || respawningCoal) return;
+
+          coalScored++;
+          resultText.setText(`🔥 Träff! ${coalScored}/${targetCoal}`);
+          coal.setVisible(false);
+          coal.body.enable = false;
+          respawningCoal = true;
+
+          if (coalScored >= targetCoal) {
+            gameOver = true;
+            this.time.delayedCall(700, () => {
+              forgeMiniGameWin();
+            });
+          } else {
+            this.time.delayedCall(500, () => spawnCoal(this));
+          }
+        }
+
+        function onCoalPlatformHit() {
+          if (coalThrown) missThrow(this, "Miss!");
+        }
+
+        function onCoalInLava() {
+          if (coalThrown) missThrow(this, "Plurr!");
+        }
+
+        function missThrow(scene, msg) {
+          if (respawningCoal) return;
+          respawningCoal = true;
+          resultText.setText(msg);
+          coal.setVisible(false);
+          coal.body.enable = false;
+          scene.time.delayedCall(500, () => spawnCoal(scene));
+        }
+
+        function updateHUD() {
+          angleText.setText(`Vinkel: ${Math.round(throwAngleDeg)}°`);
+          coalCountText.setText(`Kol: ${coalScored}/${targetCoal}`);
+        }
+      }
     }
 </script>
 
